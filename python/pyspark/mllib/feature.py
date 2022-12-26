@@ -117,7 +117,7 @@ class Normalizer(VectorTransformer):
 
     def __init__(self, p: float = 2.0):
         assert p >= 1.0, "p should be greater than 1.0"
-        self.p = float(p)
+        self.p = p
 
     @overload
     def transform(self, vector: "VectorLike") -> Vector:
@@ -460,7 +460,7 @@ class ChiSqSelector:
         set numTopFeature for feature selection by number of top features.
         Only applicable when selectorType = "numTopFeatures".
         """
-        self.numTopFeatures = int(numTopFeatures)
+        self.numTopFeatures = numTopFeatures
         return self
 
     @since("2.1.0")
@@ -469,7 +469,7 @@ class ChiSqSelector:
         set percentile [0.0, 1.0] for feature selection by percentile.
         Only applicable when selectorType = "percentile".
         """
-        self.percentile = float(percentile)
+        self.percentile = percentile
         return self
 
     @since("2.1.0")
@@ -478,7 +478,7 @@ class ChiSqSelector:
         set FPR [0.0, 1.0] for feature selection by FPR.
         Only applicable when selectorType = "fpr".
         """
-        self.fpr = float(fpr)
+        self.fpr = fpr
         return self
 
     @since("2.2.0")
@@ -487,7 +487,7 @@ class ChiSqSelector:
         set FDR [0.0, 1.0] for feature selection by FDR.
         Only applicable when selectorType = "fdr".
         """
-        self.fdr = float(fdr)
+        self.fdr = fdr
         return self
 
     @since("2.2.0")
@@ -496,7 +496,7 @@ class ChiSqSelector:
         set FWE [0.0, 1.0] for feature selection by FWE.
         Only applicable when selectorType = "fwe".
         """
-        self.fwe = float(fwe)
+        self.fwe = fwe
         return self
 
     @since("2.1.0")
@@ -505,7 +505,7 @@ class ChiSqSelector:
         set the selector type of the ChisqSelector.
         Supported options: "numTopFeatures" (default), "percentile", "fpr", "fdr", "fwe".
         """
-        self.selectorType = str(selectorType)
+        self.selectorType = selectorType
         return self
 
     def fit(self, data: RDD[LabeledPoint]) -> "ChiSqSelectorModel":
@@ -568,7 +568,7 @@ class PCA:
         k : int
             number of principal components.
         """
-        self.k = int(k)
+        self.k = k
 
     def fit(self, data: RDD["VectorLike"]) -> PCAModel:
         """
@@ -788,7 +788,7 @@ class Word2VecModel(JavaVectorTransformer, JavaSaveable, JavaLoader["Word2VecMod
     class for Word2Vec model
     """
 
-    def transform(self, word: str) -> Vector:  # type: ignore[override]
+    def transform(self, word: str) -> Vector:    # type: ignore[override]
         """
         Transforms a word to its vector representation
 
@@ -811,7 +811,7 @@ class Word2VecModel(JavaVectorTransformer, JavaSaveable, JavaLoader["Word2VecMod
         try:
             return self.call("transform", word)
         except Py4JJavaError:
-            raise ValueError("%s not found" % word)
+            raise ValueError(f"{word} not found")
 
     def findSynonyms(self, word: Union[str, "VectorLike"], num: int) -> Iterable[Tuple[str, float]]:
         """

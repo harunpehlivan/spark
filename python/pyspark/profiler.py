@@ -202,7 +202,7 @@ if has_memory_profiler:
             backend = kw.get("backend", "psutil")
             self.code_map = CodeMapForUDF(include_children=include_children, backend=backend)
             self.enable_count = 0
-            self.max_mem = kw.get("max_mem", None)
+            self.max_mem = kw.get("max_mem")
             self.prevlines: List = []
             self.backend = choose_backend(kw.get("backend", None))
             self.prev_lineno = None
@@ -287,11 +287,11 @@ class MemUsageParam(AccumulatorParam[Optional[CodeMapDict]]):
         for filename in value1:
             l1 = cast(List[LineProfile], value1.get(filename))
             l2 = cast(List[LineProfile], value2.get(filename))
-            c1 = dict((k, v) for k, v in l1)
-            c2 = dict((k, v) for k, v in l2)
+            c1 = dict(l1)
+            c2 = dict(l2)
             udf_code_map: Dict[int, Optional[MemoryTuple]] = {}
-            for lineno in c1:
-                if c1[lineno] and c2[lineno]:
+            for lineno, value in c1.items():
+                if value and c2[lineno]:
                     # c1, c2 should have same keys - line number
                     udf_code_map[lineno] = (
                         cast(MemoryTuple, c1[lineno])[0]
@@ -307,7 +307,7 @@ class MemUsageParam(AccumulatorParam[Optional[CodeMapDict]]):
                     udf_code_map[lineno] = cast(MemoryTuple, c2[lineno])
                 else:
                     udf_code_map[lineno] = None
-            value1[filename] = [(k, v) for k, v in udf_code_map.items()]
+            value1[filename] = list(udf_code_map.items())
         return value1
 
 
@@ -341,8 +341,7 @@ class BasicProfiler(Profiler):
 
     def show(self, id: int) -> None:
         """Print the profile stats to stdout, id is the RDD id"""
-        stats = self.stats()
-        if stats:
+        if stats := self.stats():
             print("=" * 60)
             print("Profile of RDD<id=%d>" % id)
             print("=" * 60)
@@ -352,8 +351,7 @@ class BasicProfiler(Profiler):
         """Dump the profile into path, id is the RDD id"""
         if not os.path.exists(path):
             os.makedirs(path)
-        stats = self.stats()
-        if stats:
+        if stats := self.stats():
             p = os.path.join(path, "rdd_%d.pstats" % id)
             stats.dump_stats(p)
 
@@ -365,8 +363,7 @@ class UDFBasicProfiler(BasicProfiler):
 
     def show(self, id: int) -> None:
         """Print the profile stats to stdout, id is the PythonUDF id"""
-        stats = self.stats()
-        if stats:
+        if stats := self.stats():
             print("=" * 60)
             print("Profile of UDF<id=%d>" % id)
             print("=" * 60)
@@ -376,8 +373,7 @@ class UDFBasicProfiler(BasicProfiler):
         """Dump the profile into path, id is the PythonUDF id"""
         if not os.path.exists(path):
             os.makedirs(path)
-        stats = self.stats()
-        if stats:
+        if stats := self.stats():
             p = os.path.join(path, "udf_%d.pstats" % id)
             stats.dump_stats(p)
 
@@ -428,18 +424,18 @@ class MemoryProfiler(Profiler):
             stream = sys.stdout
         template = "{0:>6} {1:>12} {2:>12}  {3:>10}   {4:<}"
 
-        for (filename, lines) in code_map.items():
-            header = template.format(
-                "Line #", "Mem usage", "Increment", "Occurrences", "Line Contents"
-            )
+        header = template.format(
+            "Line #", "Mem usage", "Increment", "Occurrences", "Line Contents"
+        )
 
-            stream.write("Filename: " + filename + "\n\n")
+        float_format = "{0}.{1}f".format(precision + 4, precision)
+        for (filename, lines) in code_map.items():
+            stream.write(f"Filename: {filename}" + "\n\n")
             stream.write(header + "\n")
             stream.write("=" * len(header) + "\n")
 
             all_lines = linecache.getlines(filename)
 
-            float_format = "{0}.{1}f".format(precision + 4, precision)
             template_mem = "{0:" + float_format + "} MiB"
             for (lineno, mem) in lines:
                 total_mem: Union[float, str]
@@ -461,8 +457,7 @@ class MemoryProfiler(Profiler):
 
     def show(self, id: int) -> None:
         """Print the profile stats to stdout, id is the PythonUDF id"""
-        code_map = self.stats()
-        if code_map:
+        if code_map := self.stats():
             print("=" * 60)
             print("Profile of UDF<id=%d>" % id)
             print("=" * 60)
@@ -472,8 +467,7 @@ class MemoryProfiler(Profiler):
         """Dump the memory profile into path, id is the PythonUDF id"""
         if not os.path.exists(path):
             os.makedirs(path)
-        stats = self.stats()  # dict
-        if stats:
+        if stats := self.stats():
             p = os.path.join(path, "udf_%d_memory.txt" % id)
             with open(p, "w+") as f:
                 self._show_results(stats, stream=f)

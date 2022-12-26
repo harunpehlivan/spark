@@ -17,6 +17,7 @@
 """
 Binary Classification Metrics Example.
 """
+
 from pyspark import SparkContext
 # $example on$
 from pyspark.mllib.classification import LogisticRegressionWithLBFGS
@@ -46,10 +47,10 @@ if __name__ == "__main__":
     metrics = BinaryClassificationMetrics(predictionAndLabels)
 
     # Area under precision-recall curve
-    print("Area under PR = %s" % metrics.areaUnderPR)
+    print(f"Area under PR = {metrics.areaUnderPR}")
 
     # Area under ROC curve
-    print("Area under ROC = %s" % metrics.areaUnderROC)
+    print(f"Area under ROC = {metrics.areaUnderROC}")
     # $example off$
 
     sc.stop()

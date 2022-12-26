@@ -65,7 +65,7 @@ class CategoricalAccessor:
 
     def __init__(self, series: "ps.Series"):
         if not isinstance(series.dtype, CategoricalDtype):
-            raise ValueError("Cannot call CategoricalAccessor on type {}".format(series.dtype))
+            raise ValueError(f"Cannot call CategoricalAccessor on type {series.dtype}")
         self._data = series
 
     @property
@@ -251,7 +251,9 @@ class CategoricalAccessor:
         if any(cat in self.categories for cat in categories):
             raise ValueError(
                 "new categories must not include old categories: {{{cats}}}".format(
-                    cats=", ".join(set(str(cat) for cat in categories if cat in self.categories))
+                    cats=", ".join(
+                        {str(cat) for cat in categories if cat in self.categories}
+                    )
                 )
             )
 
@@ -262,33 +264,27 @@ class CategoricalAccessor:
                 dtype=CategoricalDtype(list(self.categories) + categories, ordered=self.ordered)
             ),
         )
-        if inplace:
-            self._data._psdf._update_internal_frame(internal)
-            return None
-        else:
+        if not inplace:
             return DataFrame(internal)._psser_for(self._data._column_label).copy()
+        self._data._psdf._update_internal_frame(internal)
+        return None
 
     def _set_ordered(self, *, ordered: bool, inplace: bool) -> Optional["ps.Series"]:
         from pyspark.pandas.frame import DataFrame
 
         if self.ordered == ordered:
-            if inplace:
-                return None
-            else:
-                return self._data.copy()
-        else:
-            internal = self._data._psdf._internal.with_new_spark_column(
-                self._data._column_label,
-                self._data.spark.column,
-                field=self._data._internal.data_fields[0].copy(
-                    dtype=CategoricalDtype(categories=self.categories, ordered=ordered)
-                ),
-            )
-            if inplace:
-                self._data._psdf._update_internal_frame(internal)
-                return None
-            else:
-                return DataFrame(internal)._psser_for(self._data._column_label).copy()
+            return None if inplace else self._data.copy()
+        internal = self._data._psdf._internal.with_new_spark_column(
+            self._data._column_label,
+            self._data.spark.column,
+            field=self._data._internal.data_fields[0].copy(
+                dtype=CategoricalDtype(categories=self.categories, ordered=ordered)
+            ),
+        )
+        if not inplace:
+            return DataFrame(internal)._psser_for(self._data._column_label).copy()
+        self._data._psdf._update_internal_frame(internal)
+        return None
 
     def as_ordered(self, inplace: bool = False) -> Optional["ps.Series"]:
         """
@@ -449,32 +445,31 @@ class CategoricalAccessor:
             raise ValueError(
                 "removals must all be in old categories: {{{cats}}}".format(
                     cats=", ".join(
-                        set(str(cat) for cat in categories if cat not in self.categories)
+                        {
+                            str(cat)
+                            for cat in categories
+                            if cat not in self.categories
+                        }
                     )
                 )
             )
 
-        if len(categories) == 0:
-            if inplace:
-                return None
-            else:
-                return self._data.copy()
-        else:
-            dtype = CategoricalDtype(
-                [cat for cat in self.categories if cat not in categories], ordered=self.ordered
-            )
-            psser = self._data.astype(dtype)
+        if not categories:
+            return None if inplace else self._data.copy()
+        dtype = CategoricalDtype(
+            [cat for cat in self.categories if cat not in categories], ordered=self.ordered
+        )
+        psser = self._data.astype(dtype)
 
-            if inplace:
-                internal = self._data._psdf._internal.with_new_spark_column(
-                    self._data._column_label,
-                    psser.spark.column,
-                    field=psser._internal.data_fields[0],
-                )
-                self._data._psdf._update_internal_frame(internal)
-                return None
-            else:
-                return psser
+        if not inplace:
+            return psser
+        internal = self._data._psdf._internal.with_new_spark_column(
+            self._data._column_label,
+            psser.spark.column,
+            field=psser._internal.data_fields[0],
+        )
+        self._data._psdf._update_internal_frame(internal)
+        return None
 
     def remove_unused_categories(self, inplace: bool = False) -> Optional["ps.Series"]:
         """
@@ -642,11 +637,10 @@ class CategoricalAccessor:
             ),
         )
 
-        if inplace:
-            self._data._psdf._update_internal_frame(internal)
-            return None
-        else:
+        if not inplace:
             return DataFrame(internal)._psser_for(self._data._column_label).copy()
+        self._data._psdf._update_internal_frame(internal)
+        return None
 
     def reorder_categories(
         self,
@@ -724,7 +718,7 @@ class CategoricalAccessor:
 
         if not is_list_like(new_categories):
             raise TypeError(
-                "Parameter 'new_categories' must be list-like, was '{}'".format(new_categories)
+                f"Parameter 'new_categories' must be list-like, was '{new_categories}'"
             )
         elif len(set(new_categories)) != len(set(self.categories)) or any(
             cat not in self.categories for cat in new_categories
@@ -735,24 +729,19 @@ class CategoricalAccessor:
             ordered = self.ordered
 
         if new_categories == list(self.categories) and ordered == self.ordered:
-            if inplace:
-                return None
-            else:
-                return self._data.copy()
-        else:
-            dtype = CategoricalDtype(categories=new_categories, ordered=ordered)
-            psser = _to_cat(self._data).astype(dtype)
+            return None if inplace else self._data.copy()
+        dtype = CategoricalDtype(categories=new_categories, ordered=ordered)
+        psser = _to_cat(self._data).astype(dtype)
 
-            if inplace:
-                internal = self._data._psdf._internal.with_new_spark_column(
-                    self._data._column_label,
-                    psser.spark.column,
-                    field=psser._internal.data_fields[0],
-                )
-                self._data._psdf._update_internal_frame(internal)
-                return None
-            else:
-                return psser
+        if not inplace:
+            return psser
+        internal = self._data._psdf._internal.with_new_spark_column(
+            self._data._column_label,
+            psser.spark.column,
+            field=psser._internal.data_fields[0],
+        )
+        self._data._psdf._update_internal_frame(internal)
+        return None
 
     def set_categories(
         self,
@@ -867,16 +856,16 @@ class CategoricalAccessor:
 
         if not is_list_like(new_categories):
             raise TypeError(
-                "Parameter 'new_categories' must be list-like, was '{}'".format(new_categories)
+                f"Parameter 'new_categories' must be list-like, was '{new_categories}'"
             )
 
         if ordered is None:
             ordered = self.ordered
 
         new_dtype = CategoricalDtype(new_categories, ordered=ordered)
-        scol = self._data.spark.column
-
         if rename:
+            scol = self._data.spark.column
+
             new_scol = (
                 F.when(scol >= len(new_categories), F.lit(-1).cast(self._data.spark.data_type))
                 .otherwise(scol)
@@ -889,23 +878,19 @@ class CategoricalAccessor:
                 field=self._data._internal.data_fields[0].copy(dtype=new_dtype),
             )
 
-            if inplace:
-                self._data._psdf._update_internal_frame(internal)
-                return None
-            else:
+            if not inplace:
                 return DataFrame(internal)._psser_for(self._data._column_label).copy()
         else:
             psser = self._data.astype(new_dtype)
-            if inplace:
-                internal = self._data._psdf._internal.with_new_spark_column(
-                    self._data._column_label,
-                    psser.spark.column,
-                    field=psser._internal.data_fields[0],
-                )
-                self._data._psdf._update_internal_frame(internal)
-                return None
-            else:
+            if not inplace:
                 return psser
+            internal = self._data._psdf._internal.with_new_spark_column(
+                self._data._column_label,
+                psser.spark.column,
+                field=psser._internal.data_fields[0],
+            )
+        self._data._psdf._update_internal_frame(internal)
+        return None
 
 
 def _test() -> None:

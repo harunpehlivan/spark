@@ -20,6 +20,7 @@ An example demonstrating bisecting k-means clustering.
 Run with:
   bin/spark-submit examples/src/main/python/ml/bisecting_k_means_example.py
 """
+
 # $example on$
 from pyspark.ml.clustering import BisectingKMeans
 from pyspark.ml.evaluation import ClusteringEvaluator
@@ -47,7 +48,7 @@ if __name__ == "__main__":
     evaluator = ClusteringEvaluator()
 
     silhouette = evaluator.evaluate(predictions)
-    print("Silhouette with squared euclidean distance = " + str(silhouette))
+    print(f"Silhouette with squared euclidean distance = {str(silhouette)}")
 
     # Shows the result.
     print("Cluster Centers: ")

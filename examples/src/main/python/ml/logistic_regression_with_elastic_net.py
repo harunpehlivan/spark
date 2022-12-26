@@ -36,8 +36,8 @@ if __name__ == "__main__":
     lrModel = lr.fit(training)
 
     # Print the coefficients and intercept for logistic regression
-    print("Coefficients: " + str(lrModel.coefficients))
-    print("Intercept: " + str(lrModel.intercept))
+    print(f"Coefficients: {str(lrModel.coefficients)}")
+    print(f"Intercept: {str(lrModel.intercept)}")
 
     # We can also use the multinomial family for binary classification
     mlr = LogisticRegression(maxIter=10, regParam=0.3, elasticNetParam=0.8, family="multinomial")
@@ -46,8 +46,8 @@ if __name__ == "__main__":
     mlrModel = mlr.fit(training)
 
     # Print the coefficients and intercepts for logistic regression with multinomial family
-    print("Multinomial coefficients: " + str(mlrModel.coefficientMatrix))
-    print("Multinomial intercepts: " + str(mlrModel.interceptVector))
+    print(f"Multinomial coefficients: {str(mlrModel.coefficientMatrix)}")
+    print(f"Multinomial intercepts: {str(mlrModel.interceptVector)}")
     # $example off$
 
     spark.stop()

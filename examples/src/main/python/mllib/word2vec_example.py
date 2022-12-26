@@ -32,7 +32,7 @@ if __name__ == "__main__":
     synonyms = model.findSynonyms('1', 5)
 
     for word, cosine_distance in synonyms:
-        print("{}: {}".format(word, cosine_distance))
+        print(f"{word}: {cosine_distance}")
     # $example off$
 
     sc.stop()

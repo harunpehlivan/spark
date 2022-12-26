@@ -18,6 +18,7 @@
 """
 FMRegressor Example.
 """
+
 # $example on$
 from pyspark.ml import Pipeline
 from pyspark.ml.regression import FMRegressor
@@ -64,9 +65,9 @@ if __name__ == "__main__":
     print("Root Mean Squared Error (RMSE) on test data = %g" % rmse)
 
     fmModel = model.stages[1]
-    print("Factors: " + str(fmModel.factors))  # type: ignore
-    print("Linear: " + str(fmModel.linear))  # type: ignore
-    print("Intercept: " + str(fmModel.intercept))  # type: ignore
+    print(f"Factors: {str(fmModel.factors)}")
+    print(f"Linear: {str(fmModel.linear)}")
+    print(f"Intercept: {str(fmModel.intercept)}")
     # $example off$
 
     spark.stop()

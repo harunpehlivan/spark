@@ -134,20 +134,18 @@ def _attach(
 
     logger = getattr(logger_module, "get_logger")()
 
-    special_functions = set(
-        [
-            "__init__",
-            "__repr__",
-            "__str__",
-            "_repr_html_",
-            "__len__",
-            "__getitem__",
-            "__setitem__",
-            "__getattr__",
-            "__enter__",
-            "__exit__",
-        ]
-    )
+    special_functions = {
+        "__init__",
+        "__repr__",
+        "__str__",
+        "_repr_html_",
+        "__len__",
+        "__getitem__",
+        "__setitem__",
+        "__getattr__",
+        "__enter__",
+        "__exit__",
+    }
 
     # Modules
     for target_module in modules:

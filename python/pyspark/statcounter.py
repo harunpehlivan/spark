@@ -32,7 +32,7 @@ except ImportError:
 class StatCounter:
     def __init__(self, values: Optional[Iterable[float]] = None):
         if values is None:
-            values = list()
+            values = []
         self.n = 0  # Running count of our values
         self.mu = 0.0  # Running mean of our values
         self.m2 = 0.0  # Running variance numerator (sum of (x - mean)^2)
@@ -56,32 +56,31 @@ class StatCounter:
     # Merge another StatCounter into this one, adding up the internal statistics.
     def mergeStats(self, other: "StatCounter") -> "StatCounter":
         if not isinstance(other, StatCounter):
-            raise TypeError("Can only merge StatCounter but got %s" % type(other))
+            raise TypeError(f"Can only merge StatCounter but got {type(other)}")
 
         if other is self:  # reference equality holds
             self.mergeStats(other.copy())  # Avoid overwriting fields in a weird order
-        else:
-            if self.n == 0:
-                self.mu = other.mu
-                self.m2 = other.m2
-                self.n = other.n
-                self.maxValue = other.maxValue
-                self.minValue = other.minValue
+        elif self.n == 0:
+            self.mu = other.mu
+            self.m2 = other.m2
+            self.n = other.n
+            self.maxValue = other.maxValue
+            self.minValue = other.minValue
 
-            elif other.n != 0:
-                delta = other.mu - self.mu
-                if other.n * 10 < self.n:
-                    self.mu = self.mu + (delta * other.n) / (self.n + other.n)
-                elif self.n * 10 < other.n:
-                    self.mu = other.mu - (delta * self.n) / (self.n + other.n)
-                else:
-                    self.mu = (self.mu * self.n + other.mu * other.n) / (self.n + other.n)
+        elif other.n != 0:
+            delta = other.mu - self.mu
+            if other.n * 10 < self.n:
+                self.mu = self.mu + (delta * other.n) / (self.n + other.n)
+            elif self.n * 10 < other.n:
+                self.mu = other.mu - (delta * self.n) / (self.n + other.n)
+            else:
+                self.mu = (self.mu * self.n + other.mu * other.n) / (self.n + other.n)
 
-                self.maxValue = maximum(self.maxValue, other.maxValue)
-                self.minValue = minimum(self.minValue, other.minValue)
+            self.maxValue = maximum(self.maxValue, other.maxValue)
+            self.minValue = minimum(self.minValue, other.minValue)
 
-                self.m2 += other.m2 + (delta * delta * self.n * other.n) / (self.n + other.n)
-                self.n += other.n
+            self.m2 += other.m2 + (delta * delta * self.n * other.n) / (self.n + other.n)
+            self.n += other.n
         return self
 
     # Clone this StatCounter
@@ -105,20 +104,14 @@ class StatCounter:
 
     # Return the variance of the values.
     def variance(self) -> float:
-        if self.n == 0:
-            return float("nan")
-        else:
-            return self.m2 / self.n
+        return float("nan") if self.n == 0 else self.m2 / self.n
 
     #
     # Return the sample variance, which corrects for bias in estimating the variance by dividing
     # by N-1 instead of N.
     #
     def sampleVariance(self) -> float:
-        if self.n <= 1:
-            return float("nan")
-        else:
-            return self.m2 / (self.n - 1)
+        return float("nan") if self.n <= 1 else self.m2 / (self.n - 1)
 
     # Return the standard deviation of the values.
     def stdev(self) -> float:
@@ -156,10 +149,4 @@ class StatCounter:
         }
 
     def __repr__(self) -> str:
-        return "(count: %s, mean: %s, stdev: %s, max: %s, min: %s)" % (
-            self.count(),
-            self.mean(),
-            self.stdev(),
-            self.max(),
-            self.min(),
-        )
+        return f"(count: {self.count()}, mean: {self.mean()}, stdev: {self.stdev()}, max: {self.max()}, min: {self.min()})"

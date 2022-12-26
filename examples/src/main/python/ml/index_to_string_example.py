@@ -35,8 +35,9 @@ if __name__ == "__main__":
     model = indexer.fit(df)
     indexed = model.transform(df)
 
-    print("Transformed string column '%s' to indexed column '%s'"
-          % (indexer.getInputCol(), indexer.getOutputCol()))
+    print(
+        f"Transformed string column '{indexer.getInputCol()}' to indexed column '{indexer.getOutputCol()}'"
+    )
     indexed.show()
 
     print("StringIndexer will store labels in output column metadata\n")

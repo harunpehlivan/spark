@@ -18,6 +18,7 @@
 """
 Correlations using MLlib.
 """
+
 import sys
 
 from pyspark import SparkContext
@@ -41,12 +42,12 @@ if __name__ == "__main__":
         .map(lambda lp: LabeledPoint(lp.label, lp.features.toArray()))
 
     print()
-    print('Summary of data file: ' + filepath)
+    print(f'Summary of data file: {filepath}')
     print('%d data points' % points.count())
 
     # Statistics (correlations)
     print()
-    print('Correlation (%s) between label and each feature' % corrType)
+    print(f'Correlation ({corrType}) between label and each feature')
     print('Feature\tCorrelation')
     numFeatures = points.take(1)[0].features.size
     labelRDD = points.map(lambda lp: lp.label)

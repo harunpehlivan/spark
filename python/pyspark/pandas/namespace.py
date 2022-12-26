@@ -153,7 +153,7 @@ def from_pandas(pobj: Union[pd.DataFrame, pd.Series, pd.Index]) -> Union[Series,
     elif isinstance(pobj, pd.Index):
         return DataFrame(pd.DataFrame(index=pobj)).index
     else:
-        raise TypeError("Unknown data type: {}".format(type(pobj).__name__))
+        raise TypeError(f"Unknown data type: {type(pobj).__name__}")
 
 
 _range = range  # built-in range
@@ -301,16 +301,13 @@ def read_csv(
 
     >>> ps.read_csv(['data-01.csv', 'data-02.csv'])  # doctest: +SKIP
     """
-    # For latin-1 encoding is same as iso-8859-1, that's why its mapped to iso-8859-1.
-    encoding_mapping = {"latin-1": "iso-8859-1"}
-
     if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
         options = options.get("options")
 
-    if mangle_dupe_cols is not True:
-        raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
-    if parse_dates is not False:
-        raise ValueError("parse_dates can only be `False`: %s" % parse_dates)
+    if not mangle_dupe_cols:
+        raise ValueError(f"mangle_dupe_cols can only be `True`: {mangle_dupe_cols}")
+    if parse_dates:
+        raise ValueError(f"parse_dates can only be `False`: {parse_dates}")
 
     if usecols is not None and not callable(usecols):
         usecols = list(usecols)  # type: ignore[assignment]
@@ -327,7 +324,7 @@ def read_csv(
         elif header is None:
             reader.option("header", False)
         else:
-            raise ValueError("Unknown header argument {}".format(header))
+            raise ValueError(f"Unknown header argument {header}")
 
         if quotechar is not None:
             reader.option("quote", quotechar)
@@ -342,6 +339,9 @@ def read_csv(
         reader.options(**options)
 
         if encoding is not None:
+            # For latin-1 encoding is same as iso-8859-1, that's why its mapped to iso-8859-1.
+            encoding_mapping = {"latin-1": "iso-8859-1"}
+
             reader.option("encoding", encoding_mapping.get(encoding, encoding))
 
         column_labels: Dict[Any, str]
@@ -400,12 +400,12 @@ def read_csv(
                     "'usecols' must either be list-like of all strings, "
                     "all unicode, all integers or a callable."
                 )
-            if len(missing) > 0:
+            if missing:
                 raise ValueError(
-                    "Usecols do not match columns, columns expected but not " "found: %s" % missing
+                    f"Usecols do not match columns, columns expected but not found: {missing}"
                 )
 
-            if len(column_labels) > 0:
+            if column_labels:
                 sdf = sdf.select([scol_for(sdf, col) for col in column_labels.values()])
             else:
                 sdf = default_session().createDataFrame([], schema=StructType())
@@ -457,10 +457,7 @@ def read_csv(
             for col in psdf.columns:
                 psdf[col] = psdf[col].astype(dtype)
 
-    if squeeze and len(psdf.columns) == 1:
-        return first_series(psdf)
-    else:
-        return psdf
+    return first_series(psdf) if squeeze and len(psdf.columns) == 1 else psdf
 
 
 def read_json(
@@ -855,7 +852,7 @@ def read_parquet(
 
     if columns is not None:
         new_columns = [c for c in columns if c in psdf.columns]
-        if len(new_columns) > 0:
+        if new_columns:
             psdf = psdf[new_columns]
         else:
             sdf = default_session().createDataFrame([], schema=StructType())
@@ -1166,65 +1163,61 @@ def read_excel(
     pdf_or_psers = pd_read_excel(io_or_bin, sn=sheet_name, sq=squeeze)
 
     if single_file:
-        if isinstance(pdf_or_psers, dict):
-            return {
+        return (
+            {
                 sn: cast(Union[DataFrame, Series], from_pandas(pdf_or_pser))
                 for sn, pdf_or_pser in pdf_or_psers.items()
             }
+            if isinstance(pdf_or_psers, dict)
+            else cast(Union[DataFrame, Series], from_pandas(pdf_or_psers))
+        )
+    def read_excel_on_spark(
+                pdf_or_pser: Union[pd.DataFrame, pd.Series],
+                sn: Union[str, int, List[Union[str, int]], None],
+            ) -> Union[DataFrame, Series]:
+        if isinstance(pdf_or_pser, pd.Series):
+            pdf = pdf_or_pser.to_frame()
         else:
-            return cast(Union[DataFrame, Series], from_pandas(pdf_or_psers))
+            pdf = pdf_or_pser
+
+        psdf = cast(DataFrame, from_pandas(pdf))
+        return_schema = force_decimal_precision_scale(
+            as_nullable_spark_type(psdf._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema)
+        )
+
+        def output_func(pdf: pd.DataFrame) -> pd.DataFrame:
+            pdf = pd.concat(
+                [pd_read_excel(bin, sn=sn, sq=False) for bin in pdf[pdf.columns[0]]]
+            )
+
+            reset_index = pdf.reset_index()
+            for name, col in reset_index.items():
+                dt = col.dtype
+                if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
+                    continue
+                reset_index[name] = col.replace({np.nan: None})
+            pdf = reset_index
+
+            # Just positionally map the column names to given schema's.
+            return pdf.rename(columns=dict(zip(pdf.columns, return_schema.names)))
+
+        sdf = (
+            default_session()
+            .read.format("binaryFile")
+            .load(io)
+            .select("content")
+            .mapInPandas(lambda iterator: map(output_func, iterator), schema=return_schema)
+        )
+
+        psdf = DataFrame(psdf._internal.with_new_sdf(sdf))
+        return first_series(psdf) if squeeze and len(psdf.columns) == 1 else psdf
+
+    if isinstance(pdf_or_psers, dict):
+        return {
+            sn: read_excel_on_spark(pdf_or_pser, sn) for sn, pdf_or_pser in pdf_or_psers.items()
+        }
     else:
-
-        def read_excel_on_spark(
-            pdf_or_pser: Union[pd.DataFrame, pd.Series],
-            sn: Union[str, int, List[Union[str, int]], None],
-        ) -> Union[DataFrame, Series]:
-            if isinstance(pdf_or_pser, pd.Series):
-                pdf = pdf_or_pser.to_frame()
-            else:
-                pdf = pdf_or_pser
-
-            psdf = cast(DataFrame, from_pandas(pdf))
-            return_schema = force_decimal_precision_scale(
-                as_nullable_spark_type(psdf._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema)
-            )
-
-            def output_func(pdf: pd.DataFrame) -> pd.DataFrame:
-                pdf = pd.concat(
-                    [pd_read_excel(bin, sn=sn, sq=False) for bin in pdf[pdf.columns[0]]]
-                )
-
-                reset_index = pdf.reset_index()
-                for name, col in reset_index.items():
-                    dt = col.dtype
-                    if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
-                        continue
-                    reset_index[name] = col.replace({np.nan: None})
-                pdf = reset_index
-
-                # Just positionally map the column names to given schema's.
-                return pdf.rename(columns=dict(zip(pdf.columns, return_schema.names)))
-
-            sdf = (
-                default_session()
-                .read.format("binaryFile")
-                .load(io)
-                .select("content")
-                .mapInPandas(lambda iterator: map(output_func, iterator), schema=return_schema)
-            )
-
-            psdf = DataFrame(psdf._internal.with_new_sdf(sdf))
-            if squeeze and len(psdf.columns) == 1:
-                return first_series(psdf)
-            else:
-                return psdf
-
-        if isinstance(pdf_or_psers, dict):
-            return {
-                sn: read_excel_on_spark(pdf_or_pser, sn) for sn, pdf_or_pser in pdf_or_psers.items()
-            }
-        else:
-            return read_excel_on_spark(pdf_or_psers, sheet_name)
+        return read_excel_on_spark(pdf_or_psers, sheet_name)
 
 
 def read_html(

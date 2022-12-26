@@ -424,7 +424,7 @@ def option_context(*args: Any) -> Iterator[None]:
     >>> print(get_option('display.max_rows'), get_option('compute.max_rows'))
     1000 1000
     """
-    if len(args) == 0 or len(args) % 2 != 0:
+    if not args or len(args) % 2 != 0:
         raise ValueError("Need to invoke as option_context(pat, val, [(pat, val), ...]).")
     opts = dict(zip(args[::2], args[1::2]))
     orig_opts = {key: get_option(key) for key in opts}
@@ -440,9 +440,7 @@ def option_context(*args: Any) -> Iterator[None]:
 def _check_option(key: str) -> None:
     if key not in _options_dict:
         raise OptionError(
-            "No such option: '{}'. Available options are [{}]".format(
-                key, ", ".join(list(_options_dict.keys()))
-            )
+            f"""No such option: '{key}'. Available options are [{", ".join(list(_options_dict.keys()))}]"""
         )
 
 
@@ -467,9 +465,7 @@ class DictWrapper:
             set_option(canonical_key, val)
         else:
             raise OptionError(
-                "No such option: '{}'. Available options are [{}]".format(
-                    key, ", ".join(list(_options_dict.keys()))
-                )
+                f"""No such option: '{key}'. Available options are [{", ".join(list(_options_dict.keys()))}]"""
             )
 
     def __getattr__(self, key: str) -> Union["DictWrapper", Any]:
@@ -484,11 +480,9 @@ class DictWrapper:
         ]
         if len(candidates) == 1 and candidates[0] == canonical_key:
             return get_option(canonical_key)
-        elif len(candidates) == 0:
+        elif not candidates:
             raise OptionError(
-                "No such option: '{}'. Available options are [{}]".format(
-                    key, ", ".join(list(_options_dict.keys()))
-                )
+                f"""No such option: '{key}'. Available options are [{", ".join(list(_options_dict.keys()))}]"""
             )
         else:
             return DictWrapper(d, canonical_key)

@@ -41,14 +41,14 @@ def post_message_to_github(msg, ghprb_pull_id):
     print("Attempting to post to GitHub...")
 
     api_url = os.getenv("GITHUB_API_BASE", "https://api.github.com/repos/apache/spark")
-    url = api_url + "/issues/" + ghprb_pull_id + "/comments"
+    url = f"{api_url}/issues/{ghprb_pull_id}/comments"
     github_oauth_key = os.environ["GITHUB_OAUTH_KEY"]
 
     posted_message = json.dumps({"body": msg})
     request = Request(
         url,
         headers={
-            "Authorization": "token %s" % github_oauth_key,
+            "Authorization": f"token {github_oauth_key}",
             "Content-Type": "application/json",
         },
         data=posted_message.encode("utf-8"),
@@ -60,13 +60,13 @@ def post_message_to_github(msg, ghprb_pull_id):
             print(" > Post successful.")
     except HTTPError as http_e:
         print_err("Failed to post message to GitHub.")
-        print_err(" > http_code: %s" % http_e.code)
-        print_err(" > api_response: %s" % http_e.read())
-        print_err(" > data: %s" % posted_message)
+        print_err(f" > http_code: {http_e.code}")
+        print_err(f" > api_response: {http_e.read()}")
+        print_err(f" > data: {posted_message}")
     except URLError as url_e:
         print_err("Failed to post message to GitHub.")
-        print_err(" > urllib_status: %s" % url_e.reason[1])
-        print_err(" > data: %s" % posted_message)
+        print_err(f" > urllib_status: {url_e.reason[1]}")
+        print_err(f" > data: {posted_message}")
 
 
 def pr_message(
@@ -80,7 +80,7 @@ def pr_message(
         ghprb_pull_id,
         short_commit_hash,
         commit_url,
-        str(" " + post_msg + ".") if post_msg else ".",
+        str(f" {post_msg}.") if post_msg else ".",
     )
     return "**[Test build %s %s](%stestReport)** for PR %s at commit [`%s`](%s)%s" % str_args
 
@@ -93,10 +93,10 @@ def run_pr_checks(pr_tests, ghprb_actual_commit, sha1):
     """
     # Ensure we save off the current HEAD to revert to
     current_pr_head = run_cmd(["git", "rev-parse", "HEAD"], return_output=True).strip()
-    pr_results = list()
+    pr_results = []
 
     for pr_test in pr_tests:
-        test_name = pr_test + ".sh"
+        test_name = f"{pr_test}.sh"
         pr_results.append(
             run_cmd(
                 [
@@ -125,7 +125,6 @@ def run_tests(tests_timeout):
     ).wait()
 
     failure_note_by_errcode = {
-        # error to denote run-tests script failures:
         1: "executing the `dev/run-tests` script",
         ERROR_CODES["BLOCK_GENERAL"]: "some tests",
         ERROR_CODES["BLOCK_RAT"]: "RAT tests",
@@ -141,17 +140,19 @@ def run_tests(tests_timeout):
         ERROR_CODES["BLOCK_PYSPARK_UNIT_TESTS"]: "PySpark unit tests",
         ERROR_CODES["BLOCK_PYSPARK_PIP_TESTS"]: "PySpark pip packaging tests",
         ERROR_CODES["BLOCK_SPARKR_UNIT_TESTS"]: "SparkR unit tests",
-        ERROR_CODES["BLOCK_TIMEOUT"]: "from timeout after a configured wait of `%s`"
-        % (tests_timeout),
+        ERROR_CODES[
+            "BLOCK_TIMEOUT"
+        ]: f"from timeout after a configured wait of `{tests_timeout}`",
     }
 
     if test_result_code == 0:
         test_result_note = " * This patch passes all tests."
     else:
         note = failure_note_by_errcode.get(
-            test_result_code, "due to an unknown error code, %s" % test_result_code
+            test_result_code,
+            f"due to an unknown error code, {test_result_code}",
         )
-        test_result_note = " * This patch **fails %s**." % note
+        test_result_note = f" * This patch **fails {note}**."
 
     return [test_result_code, test_result_note]
 
@@ -191,10 +192,10 @@ def main():
     build_url = os.environ["BUILD_URL"]
 
     project_url = os.getenv("SPARK_PROJECT_URL", "https://github.com/apache/spark")
-    commit_url = project_url + "/commit/" + ghprb_actual_commit
+    commit_url = f"{project_url}/commit/{ghprb_actual_commit}"
 
     # GitHub doesn't auto-link short hashes when submitted via the API, unfortunately. :(
-    short_commit_hash = ghprb_actual_commit[0:7]
+    short_commit_hash = ghprb_actual_commit[:7]
 
     # format: http://linux.die.net/man/1/timeout
     # must be less than the timeout configured on Jenkins. Usually Jenkins's timeout is higher

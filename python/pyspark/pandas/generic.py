@@ -444,10 +444,11 @@ class Frame(object, metaclass=ABCMeta):
             "`.dtypes.value_counts()",
             FutureWarning,
         )
-        if not isinstance(self.dtypes, Iterable):
-            dtypes = [self.dtypes]
-        else:
-            dtypes = list(self.dtypes)
+        dtypes = (
+            list(self.dtypes)
+            if isinstance(self.dtypes, Iterable)
+            else [self.dtypes]
+        )
         return pd.Series(dict(Counter([d.name for d in dtypes])))
 
     def pipe(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
@@ -534,14 +535,13 @@ class Frame(object, metaclass=ABCMeta):
         Name: value, dtype: int64
         """
 
-        if isinstance(func, tuple):
-            func, target = func
-            if target in kwargs:
-                raise ValueError("%s is both the pipe target and a keyword " "argument" % target)
-            kwargs[target] = self
-            return func(*args, **kwargs)
-        else:
+        if not isinstance(func, tuple):
             return func(self, *args, **kwargs)
+        func, target = func
+        if target in kwargs:
+            raise ValueError(f"{target} is both the pipe target and a keyword argument")
+        kwargs[target] = self
+        return func(*args, **kwargs)
 
     def to_numpy(self) -> np.ndarray:
         """
@@ -644,7 +644,9 @@ class Frame(object, metaclass=ABCMeta):
         >>> ps.Series(list('aabc')).values
         array(['a', 'a', 'b', 'c'], dtype=object)
         """
-        warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
+        warnings.warn(
+            f"We recommend using `{type(self).__name__}.to_numpy()` instead."
+        )
         return self.to_numpy()
 
     def to_csv(
@@ -818,10 +820,7 @@ class Frame(object, metaclass=ABCMeta):
         else:
             column_labels = []
             for col in columns:
-                if is_name_like_tuple(col):
-                    label = cast(Label, col)
-                else:
-                    label = cast(Label, (col,))
+                label = cast(Label, col) if is_name_like_tuple(col) else cast(Label, (col,))
                 if label not in psdf._internal.column_labels:
                     raise KeyError(name_like_string(label))
                 column_labels.append(label)
@@ -833,7 +832,7 @@ class Frame(object, metaclass=ABCMeta):
         else:
             index_cols = index_col
 
-        if header is True and psdf._internal.column_labels_level > 1:
+        if header and psdf._internal.column_labels_level > 1:
             raise ValueError("to_csv only support one-level index column now")
         elif isinstance(header, list):
             sdf = psdf.to_spark(index_col)
@@ -1157,7 +1156,7 @@ class Frame(object, metaclass=ABCMeta):
             f = pd.Series.to_excel
         else:
             raise TypeError(
-                "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
+                f"Constructor expects DataFrame or Series; however, got [{self}]"
             )
         return validate_arguments_and_invoke_function(
             psdf._to_internal_pandas(), self.to_excel, f, args
@@ -1313,7 +1312,7 @@ class Frame(object, metaclass=ABCMeta):
 
         if numeric_only is None and axis == 0:
             numeric_only = True
-        elif numeric_only is True and axis == 1:
+        elif numeric_only and axis == 1:
             numeric_only = None
 
         def sum(psser: "Series") -> Column:
@@ -1414,7 +1413,7 @@ class Frame(object, metaclass=ABCMeta):
 
         if numeric_only is None and axis == 0:
             numeric_only = True
-        elif numeric_only is True and axis == 1:
+        elif numeric_only and axis == 1:
             numeric_only = None
 
         def prod(psser: "Series") -> Column:
@@ -1634,7 +1633,7 @@ class Frame(object, metaclass=ABCMeta):
 
         if numeric_only is None and axis == 0:
             numeric_only = True
-        elif numeric_only is True and axis == 1:
+        elif numeric_only and axis == 1:
             numeric_only = None
 
         return self._reduce_for_stat_function(
@@ -1698,7 +1697,7 @@ class Frame(object, metaclass=ABCMeta):
 
         if numeric_only is None and axis == 0:
             numeric_only = True
-        elif numeric_only is True and axis == 1:
+        elif numeric_only and axis == 1:
             numeric_only = None
 
         return self._reduce_for_stat_function(
@@ -2077,7 +2076,7 @@ class Frame(object, metaclass=ABCMeta):
 
         if not isinstance(accuracy, int):
             raise TypeError(
-                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
+                f"accuracy must be an integer; however, got [{type(accuracy).__name__}]"
             )
 
         def median(psser: "Series") -> Column:
@@ -2236,10 +2235,7 @@ class Frame(object, metaclass=ABCMeta):
         0
         """
         num_columns = len(self._internal.data_spark_columns)
-        if num_columns == 0:
-            return 0
-        else:
-            return len(self) * num_columns  # type: ignore[arg-type]
+        return 0 if num_columns == 0 else len(self) * num_columns
 
     def abs(self: FrameLike) -> FrameLike:
         """
@@ -2385,7 +2381,7 @@ class Frame(object, metaclass=ABCMeta):
         """
         new_by: List[Union[Label, ps.Series]]
         if isinstance(by, ps.DataFrame):
-            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by).__name__))
+            raise ValueError(f"Grouper for '{type(by).__name__}' not 1-dimensional")
         elif isinstance(by, ps.Series):
             new_by = [by]
         elif is_name_like_tuple(by):
@@ -2400,9 +2396,7 @@ class Frame(object, metaclass=ABCMeta):
             new_by = []
             for key in by:
                 if isinstance(key, ps.DataFrame):
-                    raise ValueError(
-                        "Grouper for '{}' not 1-dimensional".format(type(key).__name__)
-                    )
+                    raise ValueError(f"Grouper for '{type(key).__name__}' not 1-dimensional")
                 elif isinstance(key, ps.Series):
                     new_by.append(key)
                 elif is_name_like_tuple(key):
@@ -2414,11 +2408,9 @@ class Frame(object, metaclass=ABCMeta):
                         raise KeyError(key)
                     new_by.append(cast(Label, (key,)))
                 else:
-                    raise ValueError(
-                        "Grouper for '{}' not 1-dimensional".format(type(key).__name__)
-                    )
+                    raise ValueError(f"Grouper for '{type(key).__name__}' not 1-dimensional")
         else:
-            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by).__name__))
+            raise ValueError(f"Grouper for '{type(by).__name__}' not 1-dimensional")
         if not len(new_by):
             raise ValueError("No group keys passed!")
         axis = validate_axis(axis)
@@ -2680,10 +2672,7 @@ class Frame(object, metaclass=ABCMeta):
 
         last_valid_row = last_valid_rows[0]
 
-        if len(last_valid_row) == 1:
-            return last_valid_row[0]
-        else:
-            return tuple(last_valid_row)
+        return last_valid_row[0] if len(last_valid_row) == 1 else tuple(last_valid_row)
 
     # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.
     def rolling(
@@ -3123,7 +3112,7 @@ class Frame(object, metaclass=ABCMeta):
         if (before is None) and (after is None):
             return cast(Union[ps.DataFrame, ps.Series], self.copy() if copy else self)
         if (before is not None and after is not None) and before > after:
-            raise ValueError("Truncate: %s must be after %s" % (after, before))
+            raise ValueError(f"Truncate: {after} must be after {before}")
 
         if isinstance(self, ps.Series):
             if indexes_increasing:
@@ -3136,10 +3125,11 @@ class Frame(object, metaclass=ABCMeta):
                 ).rename(self.name)
         elif isinstance(self, ps.DataFrame):
             if axis == 0:
-                if indexes_increasing:
-                    result = self.loc[before:after]  # type: ignore[assignment]
-                else:
-                    result = self.loc[after:before]  # type: ignore[assignment]
+                result = (
+                    self.loc[before:after]
+                    if indexes_increasing
+                    else self.loc[after:before]
+                )
             elif axis == 1:
                 result = self.loc[:, before:after]  # type: ignore[assignment]
 

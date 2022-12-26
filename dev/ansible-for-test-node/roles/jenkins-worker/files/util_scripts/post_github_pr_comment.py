@@ -29,15 +29,11 @@ def _parse_args():
     args = parser.parse_args()
     if not args.pr_link:
         parser.error(
-            "Specify either environment variable {} or option {}".format(
-                pr_link_var, pr_link_option
-            )
+            f"Specify either environment variable {pr_link_var} or option {pr_link_option}"
         )
     if not args.github_oauth_key:
         parser.error(
-            "Specify either environment variable {} or option {}".format(
-                github_oauth_key_var, github_oauth_key_option
-            )
+            f"Specify either environment variable {github_oauth_key_var} or option {github_oauth_key_option}"
         )
     return args
 
@@ -47,13 +43,13 @@ def post_message_to_github(msg, github_oauth_key, pr_link):
 
     ghprb_pull_id = os.environ["ghprbPullId"]
     api_url = os.getenv("GITHUB_API_BASE", "https://api.github.com/repos/apache/spark")
-    url = api_url + "/issues/" + ghprb_pull_id + "/comments"
+    url = f"{api_url}/issues/{ghprb_pull_id}/comments"
 
     posted_message = json.dumps({"body": msg})
     request = Request(
         url,
         headers={
-            "Authorization": "token {}".format(github_oauth_key),
+            "Authorization": f"token {github_oauth_key}",
             "Content-Type": "application/json",
         },
         data=posted_message.encode("utf-8"),
@@ -65,18 +61,18 @@ def post_message_to_github(msg, github_oauth_key, pr_link):
             print(" > Post successful.")
         else:
             print_err("Surprising post response.")
-            print_err(" > http_code: {}".format(response.getcode()))
-            print_err(" > api_response: {}".format(response.read()))
-            print_err(" > data: {}".format(posted_message))
+            print_err(f" > http_code: {response.getcode()}")
+            print_err(f" > api_response: {response.read()}")
+            print_err(f" > data: {posted_message}")
     except HTTPError as http_e:
         print_err("Failed to post message to Github.")
-        print_err(" > http_code: {}".format(http_e.code))
-        print_err(" > api_response: {}".format(http_e.read()))
-        print_err(" > data: {}".format(posted_message))
+        print_err(f" > http_code: {http_e.code}")
+        print_err(f" > api_response: {http_e.read()}")
+        print_err(f" > data: {posted_message}")
     except URLError as url_e:
         print_err("Failed to post message to Github.")
-        print_err(" > urllib_status: {}".format(url_e.reason[1]))
-        print_err(" > data: {}".format(posted_message))
+        print_err(f" > urllib_status: {url_e.reason[1]}")
+        print_err(f" > data: {posted_message}")
 
 
 def print_err(msg):

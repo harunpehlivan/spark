@@ -187,15 +187,19 @@ class Statistics:
         if type(y) == str:
             raise TypeError("Use 'method=' to specify method name.")
 
-        if not y:
-            return cast(
-                JavaObject, callMLlibFunc("corr", x.map(_convert_to_vector), method)
-            ).toArray()
-        else:
-            return cast(
+        return (
+            cast(
                 float,
-                callMLlibFunc("corr", cast(RDD[float], x).map(float), y.map(float), method),
+                callMLlibFunc(
+                    "corr", cast(RDD[float], x).map(float), y.map(float), method
+                ),
             )
+            if y
+            else cast(
+                JavaObject,
+                callMLlibFunc("corr", x.map(_convert_to_vector), method),
+            ).toArray()
+        )
 
     @overload
     @staticmethod
@@ -305,9 +309,9 @@ class Statistics:
 
         if isinstance(observed, Matrix):
             jmodel = callMLlibFunc("chiSqTest", observed)
+        elif expected and len(expected) != len(observed):
+            raise ValueError("`expected` should have same length with `observed`")
         else:
-            if expected and len(expected) != len(observed):
-                raise ValueError("`expected` should have same length with `observed`")
             jmodel = callMLlibFunc("chiSqTest", _convert_to_vector(observed), expected)
         return ChiSqTestResult(jmodel)
 
@@ -374,9 +378,9 @@ class Statistics:
         0.175
         """
         if not isinstance(data, RDD):
-            raise TypeError("data should be an RDD, got %s." % type(data))
+            raise TypeError(f"data should be an RDD, got {type(data)}.")
         if not isinstance(distName, str):
-            raise TypeError("distName should be a string, got %s." % type(distName))
+            raise TypeError(f"distName should be a string, got {type(distName)}.")
 
         param_list = [float(param) for param in params]
         return KolmogorovSmirnovTestResult(

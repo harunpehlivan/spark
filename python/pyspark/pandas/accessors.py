@@ -131,12 +131,12 @@ class PandasOnSparkFrameMethods:
         """
         from pyspark.pandas.frame import DataFrame
 
-        if id_type == "sequence":
-            attach_func = InternalFrame.attach_sequence_column
+        if id_type == "distributed":
+            attach_func = InternalFrame.attach_distributed_column
         elif id_type == "distributed-sequence":
             attach_func = InternalFrame.attach_distributed_sequence_column
-        elif id_type == "distributed":
-            attach_func = InternalFrame.attach_distributed_column
+        elif id_type == "sequence":
+            attach_func = InternalFrame.attach_sequence_column
         else:
             raise ValueError(
                 "id_type should be one of 'sequence', 'distributed-sequence' and 'distributed'"
@@ -150,13 +150,11 @@ class PandasOnSparkFrameMethods:
 
         if len(column) != internal.column_labels_level:
             raise ValueError(
-                "The given column `{}` must be the same length as the existing columns.".format(
-                    column
-                )
+                f"The given column `{column}` must be the same length as the existing columns."
             )
         elif column in internal.column_labels:
             raise ValueError(
-                "The given column `{}` already exists.".format(name_like_string(column))
+                f"The given column `{name_like_string(column)}` already exists."
             )
 
         # Make sure the underlying Spark column names are the form of
@@ -414,10 +412,8 @@ class PandasOnSparkFrameMethods:
                 ]
 
                 if not any(
-                    [
-                        SPARK_INDEX_NAME_PATTERN.match(index_field.struct_field.name)
-                        for index_field in index_fields
-                    ]
+                    SPARK_INDEX_NAME_PATTERN.match(index_field.struct_field.name)
+                    for index_field in index_fields
                 ):
                     index_names = [(index_field.struct_field.name,) for index_field in index_fields]
             internal = InternalFrame(
@@ -666,7 +662,7 @@ class PandasOnSparkFrameMethods:
                 )
                 applied = pudf(F.struct(*columns)).alias(temp_struct_column)
                 sdf = self_applied._internal.spark_frame.select(applied)
-                sdf = sdf.selectExpr("%s.*" % temp_struct_column)
+                sdf = sdf.selectExpr(f"{temp_struct_column}.*")
 
                 return DataFrame(
                     psdf._internal.with_new_sdf(
@@ -734,7 +730,7 @@ class PandasOnSparkFrameMethods:
                 )
                 applied = pudf(F.struct(*columns)).alias(temp_struct_column)
                 sdf = self_applied._internal.spark_frame.select(applied)
-                sdf = sdf.selectExpr("%s.*" % temp_struct_column)
+                sdf = sdf.selectExpr(f"{temp_struct_column}.*")
 
                 index_spark_columns = None
                 index_names: Optional[List[Optional[Tuple[Any, ...]]]] = None
@@ -745,10 +741,10 @@ class PandasOnSparkFrameMethods:
                     ]
 
                     if not any(
-                        [
-                            SPARK_INDEX_NAME_PATTERN.match(index_field.struct_field.name)
-                            for index_field in index_fields
-                        ]
+                        SPARK_INDEX_NAME_PATTERN.match(
+                            index_field.struct_field.name
+                        )
+                        for index_field in index_fields
                     ):
                         index_names = [
                             (index_field.struct_field.name,) for index_field in index_fields
@@ -889,8 +885,7 @@ class PandasOnSparkSeriesMethods:
             sig_return = infer_return_type(func)
             if not isinstance(sig_return, SeriesType):
                 raise ValueError(
-                    "Expected the return type of this function to be of type column,"
-                    " but found type {}".format(sig_return)
+                    f"Expected the return type of this function to be of type column, but found type {sig_return}"
                 )
             return_type = sig_return
 

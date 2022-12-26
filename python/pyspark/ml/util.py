@@ -47,8 +47,7 @@ def _jvm() -> "JavaGateway":
     Returns the JVM view associated with SparkContext. Must be called
     after SparkContext is initialized.
     """
-    jvm = SparkContext._jvm
-    if jvm:
+    if jvm := SparkContext._jvm:
         return jvm
     else:
         raise AttributeError("Cannot load _jvm from SparkContext. Is SparkContext initialized?")
@@ -72,7 +71,7 @@ class Identifiable:
         Generate a unique string id for the object. The default implementation
         concatenates the class name, "_", and 12 random hex chars.
         """
-        return str(cls.__name__ + "_" + uuid.uuid4().hex[-12:])
+        return str(f"{cls.__name__}_{uuid.uuid4().hex[-12:]}")
 
 
 @inherit_doc
@@ -144,7 +143,9 @@ class MLWriter(BaseReadWrite):
         save() handles overwriting and then calls this method.  Subclasses should override this
         method to implement the actual saving of the instance.
         """
-        raise NotImplementedError("MLWriter is not yet implemented for type: %s" % type(self))
+        raise NotImplementedError(
+            f"MLWriter is not yet implemented for type: {type(self)}"
+        )
 
     def overwrite(self) -> "MLWriter":
         """Overwrites if the output path already exists."""
@@ -193,7 +194,7 @@ class JavaMLWriter(MLWriter):
     def save(self, path: str) -> None:
         """Save the ML instance to the input path."""
         if not isinstance(path, str):
-            raise TypeError("path should be a string, got type %s" % type(path))
+            raise TypeError(f"path should be a string, got type {type(path)}")
         self._jwrite.save(path)
 
     def overwrite(self) -> "JavaMLWriter":
@@ -281,7 +282,9 @@ class MLReader(BaseReadWrite, Generic[RL]):
 
     def load(self, path: str) -> RL:
         """Load the ML instance from the input path."""
-        raise NotImplementedError("MLReader is not yet implemented for type: %s" % type(self))
+        raise NotImplementedError(
+            f"MLReader is not yet implemented for type: {type(self)}"
+        )
 
 
 @inherit_doc
@@ -298,7 +301,7 @@ class JavaMLReader(MLReader[RL]):
     def load(self, path: str) -> RL:
         """Load the ML instance from the input path."""
         if not isinstance(path, str):
-            raise TypeError("path should be a string, got type %s" % type(path))
+            raise TypeError(f"path should be a string, got type {type(path)}")
         java_obj = self._jread.load(path)
         if not hasattr(self._clazz, "_from_java"):
             raise NotImplementedError(
@@ -321,8 +324,8 @@ class JavaMLReader(MLReader[RL]):
         java_package = clazz.__module__.replace("pyspark", "org.apache.spark")
         if clazz.__name__ in ("Pipeline", "PipelineModel"):
             # Remove the last package name "pipeline" for Pipeline and PipelineModel.
-            java_package = ".".join(java_package.split(".")[0:-1])
-        return java_package + "." + clazz.__name__
+            java_package = ".".join(java_package.split(".")[:-1])
+        return f"{java_package}.{clazz.__name__}"
 
     @classmethod
     def _load_java_obj(cls, clazz: Type["JavaMLReadable[RL]"]) -> "JavaObject":
@@ -412,10 +415,11 @@ class DefaultParamsWriter(MLWriter):
     @staticmethod
     def extractJsonParams(instance: "Params", skipParams: Sequence[str]) -> Dict[str, Any]:
         paramMap = instance.extractParamMap()
-        jsonParams = {
-            param.name: value for param, value in paramMap.items() if param.name not in skipParams
+        return {
+            param.name: value
+            for param, value in paramMap.items()
+            if param.name not in skipParams
         }
-        return jsonParams
 
     @staticmethod
     def saveMetadata(
@@ -465,7 +469,7 @@ class DefaultParamsWriter(MLWriter):
         See :py:meth:`DefaultParamsWriter.saveMetadata` for details on what this includes.
         """
         uid = instance.uid
-        cls = instance.__module__ + "." + instance.__class__.__name__
+        cls = f"{instance.__module__}.{instance.__class__.__name__}"
 
         # User-supplied param values
         params = instance._paramMap
@@ -476,11 +480,9 @@ class DefaultParamsWriter(MLWriter):
             for p in params:
                 jsonParams[p.name] = params[p]
 
-        # Default param values
-        jsonDefaultParams = {}
-        for p in instance._defaultParamMap:
-            jsonDefaultParams[p.name] = instance._defaultParamMap[p]
-
+        jsonDefaultParams = {
+            p.name: instance._defaultParamMap[p] for p in instance._defaultParamMap
+        }
         basicMetadata = {
             "class": cls,
             "timestamp": int(round(time.time() * 1000)),
@@ -490,7 +492,7 @@ class DefaultParamsWriter(MLWriter):
             "defaultParamMap": jsonDefaultParams,
         }
         if extraMetadata is not None:
-            basicMetadata.update(extraMetadata)
+            basicMetadata |= extraMetadata
         return json.dumps(basicMetadata, separators=(",", ":"))
 
 
@@ -561,8 +563,7 @@ class DefaultParamsReader(MLReader[RL]):
         """
         metadataPath = os.path.join(path, "metadata")
         metadataStr = sc.textFile(metadataPath, 1).first()
-        loadedVals = DefaultParamsReader._parseMetaData(metadataStr, expectedClassName)
-        return loadedVals
+        return DefaultParamsReader._parseMetaData(metadataStr, expectedClassName)
 
     @staticmethod
     def _parseMetaData(metadataStr: str, expectedClassName: str = "") -> Dict[str, Any]:
@@ -578,12 +579,11 @@ class DefaultParamsReader(MLReader[RL]):
             If non empty, this is checked against the loaded metadata.
         """
         metadata = json.loads(metadataStr)
-        className = metadata["class"]
-        if len(expectedClassName) > 0:
-            assert className == expectedClassName, (
-                "Error loading metadata: Expected "
-                + "class name {} but found class name {}".format(expectedClassName, className)
-            )
+        if expectedClassName != "":
+            className = metadata["class"]
+            assert (
+                className == expectedClassName
+            ), f"Error loading metadata: Expected class name {expectedClassName} but found class name {className}"
         return metadata
 
     @staticmethod
@@ -631,8 +631,7 @@ class DefaultParamsReader(MLReader[RL]):
         else:
             pythonClassName = metadata["class"].replace("org.apache.spark", "pyspark")
         py_type: Type[RL] = DefaultParamsReader.__get_class(pythonClassName)
-        instance = py_type.load(path)
-        return instance
+        return py_type.load(path)
 
 
 @inherit_doc
@@ -669,10 +668,9 @@ class MetaAlgorithmReadWrite:
         from pyspark.ml.tuning import _ValidatorParams
         from pyspark.ml.classification import OneVsRest
 
-        return (
-            isinstance(pyInstance, Pipeline)
-            or isinstance(pyInstance, OneVsRest)
-            or (isinstance(pyInstance, Estimator) and isinstance(pyInstance, _ValidatorParams))
+        return isinstance(pyInstance, (Pipeline, OneVsRest)) or (
+            isinstance(pyInstance, Estimator)
+            and isinstance(pyInstance, _ValidatorParams)
         )
 
     @staticmethod

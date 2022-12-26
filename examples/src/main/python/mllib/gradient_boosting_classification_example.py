@@ -18,6 +18,7 @@
 """
 Gradient Boosted Trees Classification Example.
 """
+
 from pyspark import SparkContext
 # $example on$
 from pyspark.mllib.tree import GradientBoostedTrees, GradientBoostedTreesModel
@@ -43,7 +44,7 @@ if __name__ == "__main__":
     labelsAndPredictions = testData.map(lambda lp: lp.label).zip(predictions)
     testErr = labelsAndPredictions.filter(
         lambda lp: lp[0] != lp[1]).count() / float(testData.count())
-    print('Test Error = ' + str(testErr))
+    print(f'Test Error = {str(testErr)}')
     print('Learned classification GBT model:')
     print(model.toDebugString())
 

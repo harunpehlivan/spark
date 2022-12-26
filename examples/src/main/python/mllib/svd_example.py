@@ -43,6 +43,6 @@ if __name__ == "__main__":
     print("U factor is:")
     for vector in collected:
         print(vector)
-    print("Singular values are: %s" % s)
+    print(f"Singular values are: {s}")
     print("V factor is:\n%s" % V)
     sc.stop()

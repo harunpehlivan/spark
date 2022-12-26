@@ -75,7 +75,7 @@ class LogisticRegressionTest(SparkSessionTestCase):
             [1.0, 8.1093, 7.0, 10.0],
             [3.041, 5.0, 8.0, 11.0],
         ]
-        for i in range(0, len(expected)):
+        for i in range(len(expected)):
             self.assertTrue(
                 np.allclose(model.coefficientMatrix.toArray()[i], expected[i], atol=1e-4)
             )
@@ -257,9 +257,9 @@ class LDATest(SparkSessionTestCase):
         self.assertFalse(localModel.isDistributed())
         # Define paths
         path = tempfile.mkdtemp()
-        lda_path = path + "/lda"
-        dist_model_path = path + "/distLDAModel"
-        local_model_path = path + "/localLDAModel"
+        lda_path = f"{path}/lda"
+        dist_model_path = f"{path}/distLDAModel"
+        local_model_path = f"{path}/localLDAModel"
         # Test LDA
         lda.save(lda_path)
         lda2 = LDA.load(lda_path)

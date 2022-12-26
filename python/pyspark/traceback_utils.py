@@ -33,7 +33,7 @@ def first_spark_call():
     file, line, module, what = tb[len(tb) - 1]
     sparkpath = os.path.dirname(file)
     first_spark_frame = len(tb) - 1
-    for i in range(0, len(tb)):
+    for i in range(len(tb)):
         file, line, fun, what = tb[i]
         if file.startswith(sparkpath):
             first_spark_frame = i
@@ -61,10 +61,8 @@ class SCCallSiteSync:
     def __init__(self, sc):
         call_site = first_spark_call()
         if call_site is not None:
-            self._call_site = "%s at %s:%s" % (
-                call_site.function,
-                call_site.file,
-                call_site.linenum,
+            self._call_site = (
+                f"{call_site.function} at {call_site.file}:{call_site.linenum}"
             )
         else:
             self._call_site = "Error! Could not extract traceback info"

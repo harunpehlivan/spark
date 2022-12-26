@@ -145,7 +145,7 @@ class MatrixFactorizationModel(
         """
         Predicts rating for the given user and product.
         """
-        return self._java_model.predict(int(user), int(product))
+        return self._java_model.predict(user, product)
 
     @since("0.9.0")
     def predictAll(self, user_product: RDD[Tuple[int, int]]) -> RDD[Rating]:
@@ -247,7 +247,7 @@ class ALS:
         elif isinstance(first, (tuple, list)):
             ratings = ratings.map(lambda x: Rating(*x))
         else:
-            raise TypeError("Expect a Rating or a tuple/list, but got %s." % type(first))
+            raise TypeError(f"Expect a Rating or a tuple/list, but got {type(first)}.")
         return ratings
 
     @classmethod

@@ -45,6 +45,6 @@ if __name__ == "__main__":
     points = sc.textFile(sys.argv[1]).map(parsePoint)
     iterations = int(sys.argv[2])
     model = LogisticRegressionWithSGD.train(points, iterations)
-    print("Final weights: " + str(model.weights))
-    print("Final intercept: " + str(model.intercept))
+    print(f"Final weights: {str(model.weights)}")
+    print(f"Final intercept: {str(model.intercept)}")
     sc.stop()

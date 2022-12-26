@@ -182,7 +182,7 @@ def booleanize_null(scol: Column, f: Callable[..., Column]) -> Column:
     Booleanize Null in Spark Column
     """
     comp_ops = [
-        getattr(Column, "__{}__".format(comp_op))
+        getattr(Column, f"__{comp_op}__")
         for comp_op in ["eq", "ne", "lt", "le", "ge", "gt"]
     ]
 
@@ -243,7 +243,7 @@ def column_op(f: Callable[..., Column]) -> Callable[..., SeriesOrIndex]:
         else:
             raise ValueError(ERROR_MESSAGE_CANNOT_COMBINE)
 
-        if not all(self.name == col.name for col in cols):
+        if any(self.name != col.name for col in cols):
             index_ops = index_ops.rename(None)
 
         return index_ops
@@ -464,7 +464,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         else:
             # TODO: support more APIs?
             raise NotImplementedError(
-                "pandas-on-Spark objects currently do not support %s." % ufunc
+                f"pandas-on-Spark objects currently do not support {ufunc}."
             )
 
     @property
@@ -702,7 +702,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             ).isNotNull()
 
     def _is_monotonic(self, order: str) -> bool:
-        assert order in ("increasing", "decreasing")
+        assert order in {"increasing", "decreasing"}
 
         sdf = self._internal.spark_frame
 
@@ -753,10 +753,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             F.min(F.coalesce(F.col("__comparison_between_partitions"), F.lit(True)))
             & F.min(F.coalesce(F.col("__comparison_within_partition"), F.lit(True)))
         ).collect()[0][0]
-        if ret is None:
-            return True
-        else:
-            return ret
+        return True if ret is None else ret
 
     @property
     def ndim(self) -> int:
@@ -1050,10 +1047,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 F.min(F.when(col.isNull(), F.lit(False)).otherwise(col.cast("boolean")))
             ).collect()[0][0]
 
-        if ret is None:
-            return True
-        else:
-            return ret
+        return True if ret is None else ret
 
     # TODO: axis, skipna, and many arguments should be implemented.
     def any(self, axis: Axis = 0) -> bool:
@@ -1113,10 +1107,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         # ret = sdf.select(F.expr("any(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
         # Here we use max as its alternative:
         ret = sdf.select(F.max(F.coalesce(col.cast("boolean"), F.lit(False)))).collect()[0][0]
-        if ret is None:
-            return False
-        else:
-            return ret
+        return False if ret is None else ret
 
     # TODO: add frep and axis parameter
     def shift(
@@ -1178,7 +1169,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         part_cols: Sequence["ColumnOrName"] = (),
     ) -> IndexOpsLike:
         if not isinstance(periods, int):
-            raise TypeError("periods should be an int; however, got [%s]" % type(periods).__name__)
+            raise TypeError(
+                f"periods should be an int; however, got [{type(periods).__name__}]"
+            )
 
         if periods == 0:
             return self.copy()
@@ -1602,7 +1595,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         from pyspark.pandas.series import first_series
 
         assert (na_sentinel is None) or isinstance(na_sentinel, int)
-        assert sort is True
+        assert sort
 
         if isinstance(self.dtype, CategoricalDtype):
             categories = self.dtype.categories
@@ -1650,26 +1643,28 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         unique_to_code = {}
         if na_sentinel is not None:
             na_sentinel_code = na_sentinel
-        code = 0
-        for unique in uniques_list:
+        for code, unique in enumerate(uniques_list):
             if pd.isna(unique):
                 if na_sentinel is None:
                     na_sentinel_code = code
             else:
                 unique_to_code[unique] = code
-            code += 1
-
-        kvs = list(
-            chain(*([(F.lit(unique), F.lit(code)) for unique, code in unique_to_code.items()]))
-        )
-
-        if len(kvs) == 0:  # uniques are all missing values
-            new_scol = F.lit(na_sentinel_code)
-        else:
+        if kvs := list(
+            chain(
+                *(
+                    [
+                        (F.lit(unique), F.lit(code))
+                        for unique, code in unique_to_code.items()
+                    ]
+                )
+            )
+        ):
             map_scol = F.create_map(*kvs)
             null_scol = F.when(self.isnull().spark.column, F.lit(na_sentinel_code))
             new_scol = null_scol.otherwise(map_scol[self.spark.column])
 
+        else:
+            new_scol = F.lit(na_sentinel_code)
         codes = self._with_new_scol(new_scol.alias(self._internal.data_spark_column_names[0]))
 
         if na_sentinel is not None:

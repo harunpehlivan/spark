@@ -114,9 +114,7 @@ def _auto_patch_spark() -> None:
         except Exception as e:
             logger = logging.getLogger("pyspark.pandas.usage_logger")
             logger.warning(
-                "Tried to attach usage logger `{}`, but an exception was raised: {}".format(
-                    logger_module, str(e)
-                )
+                f"Tried to attach usage logger `{logger_module}`, but an exception was raised: {str(e)}"
             )
 
 
@@ -164,4 +162,4 @@ def __getattr__(key: str) -> Any:
     if hasattr(MissingPandasLikeGeneralFunctions, key):
         return getattr(MissingPandasLikeGeneralFunctions, key)
     else:
-        raise AttributeError("module 'pyspark.pandas' has no attribute '%s'" % (key))
+        raise AttributeError(f"module 'pyspark.pandas' has no attribute '{key}'")

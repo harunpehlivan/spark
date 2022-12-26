@@ -257,7 +257,7 @@ class GaussianMixtureModel(
             return GaussianMixtureSummary(super(GaussianMixtureModel, self).summary)
         else:
             raise RuntimeError(
-                "No training summary available for this %s" % self.__class__.__name__
+                f"No training summary available for this {self.__class__.__name__}"
             )
 
     @since("3.0.0")
@@ -694,7 +694,7 @@ class KMeansModel(
             return KMeansSummary(super(KMeansModel, self).summary)
         else:
             raise RuntimeError(
-                "No training summary available for this %s" % self.__class__.__name__
+                f"No training summary available for this {self.__class__.__name__}"
             )
 
     @since("3.0.0")
@@ -1032,7 +1032,7 @@ class BisectingKMeansModel(
             return BisectingKMeansSummary(super(BisectingKMeansModel, self).summary)
         else:
             raise RuntimeError(
-                "No training summary available for this %s" % self.__class__.__name__
+                f"No training summary available for this {self.__class__.__name__}"
             )
 
     @since("3.0.0")

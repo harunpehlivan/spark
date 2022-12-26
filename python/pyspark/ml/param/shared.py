@@ -239,7 +239,7 @@ class HasOutputCol(Params):
 
     def __init__(self) -> None:
         super(HasOutputCol, self).__init__()
-        self._setDefault(outputCol=self.uid + "__output")
+        self._setDefault(outputCol=f"{self.uid}__output")
 
     def getOutputCol(self) -> str:
         """

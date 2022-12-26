@@ -98,7 +98,7 @@ class FPGrowth:
             of -1 will use the same number as input data.
             (default: -1)
         """
-        model = callMLlibFunc("trainFPGrowthModel", data, float(minSupport), int(numPartitions))
+        model = callMLlibFunc("trainFPGrowthModel", data, minSupport, numPartitions)
         return FPGrowthModel(model)
 
     class FreqItemset(NamedTuple):

@@ -18,6 +18,7 @@
 """
 Decision Tree Regression Example.
 """
+
 from pyspark import SparkContext
 # $example on$
 from pyspark.mllib.tree import DecisionTree, DecisionTreeModel
@@ -44,7 +45,7 @@ if __name__ == "__main__":
     labelsAndPredictions = testData.map(lambda lp: lp.label).zip(predictions)
     testMSE = labelsAndPredictions.map(lambda lp: (lp[0] - lp[1]) * (lp[0] - lp[1])).sum() /\
         float(testData.count())
-    print('Test Mean Squared Error = ' + str(testMSE))
+    print(f'Test Mean Squared Error = {str(testMSE)}')
     print('Learned regression tree model:')
     print(model.toDebugString())
 

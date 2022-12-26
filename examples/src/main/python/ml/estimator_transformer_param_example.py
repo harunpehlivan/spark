@@ -18,6 +18,7 @@
 """
 Estimator Transformer Param Example.
 """
+
 # $example on$
 from pyspark.ml.linalg import Vectors
 from pyspark.ml.classification import LogisticRegression
@@ -53,18 +54,11 @@ if __name__ == "__main__":
     print("Model 1 was fit using parameters: ")
     print(model1.extractParamMap())
 
-    # We may alternatively specify parameters using a Python dictionary as a paramMap
-    paramMap = {lr.maxIter: 20}
-    paramMap[lr.maxIter] = 30  # Specify 1 Param, overwriting the original maxIter.
-    # Specify multiple Params.
-    paramMap.update({lr.regParam: 0.1, lr.threshold: 0.55})  # type: ignore
-
+    paramMap = {lr.maxIter: 30} | {lr.regParam: 0.1, lr.threshold: 0.55}
     # You can combine paramMaps, which are python dictionaries.
     # Change output column name
     paramMap2 = {lr.probabilityCol: "myProbability"}
-    paramMapCombined = paramMap.copy()
-    paramMapCombined.update(paramMap2)  # type: ignore
-
+    paramMapCombined = paramMap | paramMap2
     # Now learn a new model using the paramMapCombined parameters.
     # paramMapCombined overrides all parameters set earlier via lr.set* methods.
     model2 = lr.fit(training, paramMapCombined)
@@ -86,8 +80,9 @@ if __name__ == "__main__":
         .collect()
 
     for row in result:
-        print("features=%s, label=%s -> prob=%s, prediction=%s"
-              % (row.features, row.label, row.myProbability, row.prediction))
+        print(
+            f"features={row.features}, label={row.label} -> prob={row.myProbability}, prediction={row.prediction}"
+        )
     # $example off$
 
     spark.stop()

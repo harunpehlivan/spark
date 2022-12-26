@@ -18,6 +18,7 @@
 """
 Randomly generated RDDs.
 """
+
 import sys
 
 from pyspark import SparkContext
@@ -40,7 +41,7 @@ if __name__ == "__main__":
           % normalRDD.count())
     print('  First 5 samples:')
     for sample in normalRDD.take(5):
-        print('    ' + str(sample))
+        print(f'    {str(sample)}')
     print()
 
     # Example: RandomRDDs.normalVectorRDD
@@ -48,7 +49,7 @@ if __name__ == "__main__":
     print('Generated RDD of %d examples of length-2 vectors.' % normalVectorRDD.count())
     print('  First 5 samples:')
     for sample in normalVectorRDD.take(5):
-        print('    ' + str(sample))
+        print(f'    {str(sample)}')
     print()
 
     sc.stop()

@@ -327,7 +327,7 @@ class SparkContext:
         sys.path.insert(1, root_dir)
 
         # Deploy any code dependencies specified in the constructor
-        self._python_includes = list()
+        self._python_includes = []
         for path in pyFiles or []:
             self.addPyFile(path)
 
@@ -437,22 +437,13 @@ class SparkContext:
                     SparkContext._active_spark_context
                     and SparkContext._active_spark_context != instance
                 ):
-                    currentMaster = SparkContext._active_spark_context.master
                     currentAppName = SparkContext._active_spark_context.appName
                     callsite = SparkContext._active_spark_context._callsite
 
+                    currentMaster = SparkContext._active_spark_context.master
                     # Raise error if there is already a running Spark context
                     raise ValueError(
-                        "Cannot run multiple SparkContexts at once; "
-                        "existing SparkContext(app=%s, master=%s)"
-                        " created by %s at %s:%s "
-                        % (
-                            currentAppName,
-                            currentMaster,
-                            callsite.function,
-                            callsite.file,
-                            callsite.linenum,
-                        )
+                        f"Cannot run multiple SparkContexts at once; existing SparkContext(app={currentAppName}, master={currentMaster}) created by {callsite.function} at {callsite.file}:{callsite.linenum} "
                     )
                 else:
                     SparkContext._active_spark_context = instance
@@ -797,7 +788,7 @@ class SparkContext:
                 # at least be in that function once. Here we do it by explicitly converting
                 # the empty iterator to a list, thus make sure worker reuse takes effect.
                 # See more details in SPARK-26549.
-                assert len(list(iterator)) == 0
+                assert not list(iterator)
                 return range(getStart(split), getStart(split + 1), step)
 
             return self.parallelize([], numSlices).mapPartitionsWithIndex(f)
@@ -851,10 +842,7 @@ class SparkContext:
             chunked_out = ChunkedStream(sock_file, 8192)
             serializer.dump_stream(data, chunked_out)
             chunked_out.close()
-            # this call will block until the server has read all the data and processed it (or
-            # throws an exception)
-            r = server.getResult()
-            return r
+            return server.getResult()
         else:
             # without encryption, we serialize to a file, and we read the file in java and
             # parallelize from there.
@@ -1723,9 +1711,9 @@ class SparkContext:
             cls = jdouble_rdd_cls
         else:
             cls_name = rdds[0]._jrdd.getClass().getCanonicalName()
-            raise TypeError("Unsupported Java RDD class %s" % cls_name)
+            raise TypeError(f"Unsupported Java RDD class {cls_name}")
         jrdds = gw.new_array(cls, len(rdds))
-        for i in range(0, len(rdds)):
+        for i in range(len(rdds)):
             jrdds[i] = rdds[i]._jrdd
         return RDD(self._jsc.union(jrdds), self, rdds[0]._jrdd_deserializer)
 
@@ -1812,7 +1800,7 @@ class SparkContext:
             elif isinstance(value, complex):
                 accum_param = cast("AccumulatorParam[T]", accumulators.COMPLEX_ACCUMULATOR_PARAM)
             else:
-                raise TypeError("No default accumulator param for type %s" % type(value))
+                raise TypeError(f"No default accumulator param for type {type(value)}")
         SparkContext._next_accum_id += 1
         return Accumulator(SparkContext._next_accum_id - 1, value, accum_param)
 
@@ -2071,9 +2059,11 @@ class SparkContext:
         :meth:`RDD.checkpoint`
         :meth:`RDD.getCheckpointFile`
         """
-        if not self._jsc.sc().getCheckpointDir().isEmpty():
-            return self._jsc.sc().getCheckpointDir().get()
-        return None
+        return (
+            None
+            if self._jsc.sc().getCheckpointDir().isEmpty()
+            else self._jsc.sc().getCheckpointDir().get()
+        )
 
     def _getJavaStorageLevel(self, storageLevel: StorageLevel) -> JavaObject:
         """
@@ -2375,7 +2365,7 @@ class SparkContext:
         for x in jresources:
             name = jresources[x].name()
             jaddresses = jresources[x].addresses()
-            addrs = [addr for addr in jaddresses]
+            addrs = list(jaddresses)
             resources[name] = ResourceInformation(name, addrs)
         return resources
 

@@ -61,12 +61,10 @@ class VersionUtils:
         """
         m = re.search(r"^(\d+)\.(\d+)(\..*)?$", sparkVersion)
         if m is not None:
-            return (int(m.group(1)), int(m.group(2)))
+            return int(m[1]), int(m[2])
         else:
             raise ValueError(
-                "Spark tried to parse '%s' as a Spark" % sparkVersion
-                + " version string, but it could not find the major and minor"
-                + " version numbers."
+                f"Spark tried to parse '{sparkVersion}' as a Spark version string, but it could not find the major and minor version numbers."
             )
 
 
@@ -206,14 +204,14 @@ def try_simplify_traceback(tb: TracebackType) -> Optional[TracebackType]:
     tb_next = None
     new_tb = None
     pairs = zip(walk_tb(tb), traceback.extract_tb(tb))
-    last_seen = []
-
-    for cur_tb, cur_frame in pairs:
-        if not cur_frame.filename.startswith(root):
-            # Filter the stacktrace from the PySpark source itself.
-            last_seen = [(cur_tb, cur_frame)]
-            break
-
+    last_seen = next(
+        (
+            [(cur_tb, cur_frame)]
+            for cur_tb, cur_frame in pairs
+            if not cur_frame.filename.startswith(root)
+        ),
+        [],
+    )
     for cur_tb, cur_frame in reversed(list(itertools.chain(last_seen, pairs))):
         # Once we have seen the file names outside, don't skip.
         new_tb = TracebackType(
@@ -270,7 +268,7 @@ def _parse_memory(s: str) -> int:
     """
     units = {"g": 1024, "m": 1, "t": 1 << 20, "k": 1.0 / 1024}
     if s[-1].lower() not in units:
-        raise ValueError("invalid format: " + s)
+        raise ValueError(f"invalid format: {s}")
     return int(float(s[:-1]) * units[s[-1].lower()])
 
 
@@ -396,16 +394,19 @@ class InheritableThread(threading.Thread):
         return super(InheritableThread, self).start()
 
 
-if __name__ == "__main__":
-    if "pypy" not in platform.python_implementation().lower() and sys.version_info[:2] >= (3, 7):
-        import doctest
-        import pyspark.util
-        from pyspark.context import SparkContext
+if (
+    __name__ == "__main__"
+    and "pypy" not in platform.python_implementation().lower()
+    and sys.version_info[:2] >= (3, 7)
+):
+    import doctest
+    import pyspark.util
+    from pyspark.context import SparkContext
 
-        globs = pyspark.util.__dict__.copy()
-        globs["sc"] = SparkContext("local[4]", "PythonTest")
-        (failure_count, test_count) = doctest.testmod(pyspark.util, globs=globs)
-        globs["sc"].stop()
+    globs = pyspark.util.__dict__.copy()
+    globs["sc"] = SparkContext("local[4]", "PythonTest")
+    (failure_count, test_count) = doctest.testmod(pyspark.util, globs=globs)
+    globs["sc"].stop()
 
-        if failure_count:
-            sys.exit(-1)
+    if failure_count:
+        sys.exit(-1)

@@ -75,9 +75,7 @@ def which(program):
     From: http://stackoverflow.com/a/377028
     """
 
-    fpath = os.path.split(program)[0]
-
-    if fpath:
+    if fpath := os.path.split(program)[0]:
         if is_exe(program):
             return program
     else:

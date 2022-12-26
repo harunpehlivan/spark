@@ -242,14 +242,14 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         cvModel = cv.fit(dataset)
         lrModel = cvModel.bestModel
 
-        lrModelPath = temp_path + "/lrModel"
+        lrModelPath = f"{temp_path}/lrModel"
         lrModel.save(lrModelPath)
         loadedLrModel = LogisticRegressionModelCls.load(lrModelPath)
         self.assertEqual(loadedLrModel.uid, lrModel.uid)
         self.assertEqual(loadedLrModel.intercept, lrModel.intercept)
 
         # SPARK-32092: Saving and then loading CrossValidatorModel should not change the params
-        cvModelPath = temp_path + "/cvModel"
+        cvModelPath = f"{temp_path}/cvModel"
         cvModel.save(cvModelPath)
         loadedCvModel = CrossValidatorModel.load(cvModelPath)
         for param in [
@@ -266,7 +266,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         # test loading model backwards compatibility
         cvModel2 = cvModel.copy()
         cvModel2.stdMetrics = []
-        cvModelPath2 = temp_path + "/cvModel2"
+        cvModelPath2 = f"{temp_path}/cvModel2"
         cvModel2.save(cvModelPath2)
         loadedCvModel2 = CrossValidatorModel.load(cvModelPath2)
         assert loadedCvModel2.stdMetrics == []
@@ -298,7 +298,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         # test save/load of CrossValidator
         cv = CrossValidator(estimator=lr, estimatorParamMaps=grid, evaluator=evaluator)
         cvModel = cv.fit(dataset)
-        cvPath = temp_path + "/cv"
+        cvPath = f"{temp_path}/cv"
         cv.save(cvPath)
         loadedCV = CrossValidator.load(cvPath)
         self.assertEqual(loadedCV.getEstimator().uid, cv.getEstimator().uid)
@@ -306,7 +306,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         self.assert_param_maps_equal(loadedCV.getEstimatorParamMaps(), cv.getEstimatorParamMaps())
 
         # test save/load of CrossValidatorModel
-        cvModelPath = temp_path + "/cvModel"
+        cvModelPath = f"{temp_path}/cvModel"
         cvModel.save(cvModelPath)
         loadedModel = CrossValidatorModel.load(cvModelPath)
         self.assertEqual(loadedModel.bestModel.uid, cvModel.bestModel.uid)
@@ -377,15 +377,15 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         checkSubModels(cvModel.subModels)
 
         # Test the default value for option "persistSubModel" to be "true"
-        testSubPath = temp_path + "/testCrossValidatorSubModels"
-        savingPathWithSubModels = testSubPath + "cvModel3"
+        testSubPath = f"{temp_path}/testCrossValidatorSubModels"
+        savingPathWithSubModels = f"{testSubPath}cvModel3"
         cvModel.save(savingPathWithSubModels)
         cvModel3 = CrossValidatorModel.load(savingPathWithSubModels)
         checkSubModels(cvModel3.subModels)
         cvModel4 = cvModel3.copy()
         checkSubModels(cvModel4.subModels)
 
-        savingPathWithoutSubModels = testSubPath + "cvModel2"
+        savingPathWithoutSubModels = f"{testSubPath}cvModel2"
         cvModel.write().option("persistSubModels", "false").save(savingPathWithoutSubModels)
         cvModel2 = CrossValidatorModel.load(savingPathWithoutSubModels)
         self.assertEqual(cvModel2.subModels, None)
@@ -417,7 +417,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         # test save/load of CrossValidator
         cv = CrossValidator(estimator=ova, estimatorParamMaps=grid, evaluator=evaluator)
         cvModel = cv.fit(dataset)
-        cvPath = temp_path + "/cv"
+        cvPath = f"{temp_path}/cv"
         cv.save(cvPath)
         loadedCV = CrossValidator.load(cvPath)
         self.assert_param_maps_equal(loadedCV.getEstimatorParamMaps(), grid)
@@ -434,7 +434,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
                     self.assertEqual(param[p], originalParamMap[i][p])
 
         # test save/load of CrossValidatorModel
-        cvModelPath = temp_path + "/cvModel"
+        cvModelPath = f"{temp_path}/cvModel"
         cvModel.save(cvModelPath)
         loadedModel = CrossValidatorModel.load(cvModelPath)
         self.assert_param_maps_equal(loadedModel.getEstimatorParamMaps(), grid)
@@ -483,7 +483,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
             evaluator=MulticlassClassificationEvaluator(),
             numFolds=2,
         )  # use 3+ folds in practice
-        cvPath = temp_path + "/cv"
+        cvPath = f"{temp_path}/cv"
         crossval.save(cvPath)
         loadedCV = CrossValidator.load(cvPath)
         self.assert_param_maps_equal(loadedCV.getEstimatorParamMaps(), paramGrid)
@@ -493,7 +493,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         cvModel = crossval.fit(training)
 
         # test save/load of CrossValidatorModel
-        cvModelPath = temp_path + "/cvModel"
+        cvModelPath = f"{temp_path}/cvModel"
         cvModel.save(cvModelPath)
         loadedModel = CrossValidatorModel.load(cvModelPath)
         self.assertEqual(loadedModel.bestModel.uid, cvModel.bestModel.uid)
@@ -511,7 +511,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
             evaluator=MulticlassClassificationEvaluator(),
             numFolds=2,
         )  # use 3+ folds in practice
-        cv2Path = temp_path + "/cv2"
+        cv2Path = f"{temp_path}/cv2"
         crossval2.save(cv2Path)
         loadedCV2 = CrossValidator.load(cv2Path)
         self.assert_param_maps_equal(loadedCV2.getEstimatorParamMaps(), paramGrid)
@@ -520,7 +520,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         # Run cross-validation, and choose the best set of parameters.
         cvModel2 = crossval2.fit(training)
         # test save/load of CrossValidatorModel
-        cvModelPath2 = temp_path + "/cvModel2"
+        cvModelPath2 = f"{temp_path}/cvModel2"
         cvModel2.save(cvModelPath2)
         loadedModel2 = CrossValidatorModel.load(cvModelPath2)
         self.assertEqual(loadedModel2.bestModel.uid, cvModel2.bestModel.uid)
@@ -583,7 +583,7 @@ class CrossValidatorTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
 
         # test save/load of CrossValidator
         temp_path = tempfile.mkdtemp()
-        cvPath = temp_path + "/cv"
+        cvPath = f"{temp_path}/cv"
         cv_with_user_folds.save(cvPath)
         loadedCV = CrossValidator.load(cvPath)
         self.assertEqual(loadedCV.getFoldCol(), cv_with_user_folds.getFoldCol())
@@ -699,13 +699,13 @@ class TrainValidationSplitTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         tvsModel = tvs.fit(dataset)
         lrModel = tvsModel.bestModel
 
-        lrModelPath = temp_path + "/lrModel"
+        lrModelPath = f"{temp_path}/lrModel"
         lrModel.save(lrModelPath)
         loadedLrModel = LogisticRegressionModelCls.load(lrModelPath)
         self.assertEqual(loadedLrModel.uid, lrModel.uid)
         self.assertEqual(loadedLrModel.intercept, lrModel.intercept)
 
-        tvsModelPath = temp_path + "/tvsModel"
+        tvsModelPath = f"{temp_path}/tvsModel"
         tvsModel.save(tvsModelPath)
         loadedTvsModel = TrainValidationSplitModel.load(tvsModelPath)
         for param in [
@@ -743,14 +743,14 @@ class TrainValidationSplitTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         tvs = TrainValidationSplit(estimator=lr, estimatorParamMaps=grid, evaluator=evaluator)
         tvsModel = tvs.fit(dataset)
 
-        tvsPath = temp_path + "/tvs"
+        tvsPath = f"{temp_path}/tvs"
         tvs.save(tvsPath)
         loadedTvs = TrainValidationSplit.load(tvsPath)
         self.assertEqual(loadedTvs.getEstimator().uid, tvs.getEstimator().uid)
         self.assertEqual(loadedTvs.getEvaluator().uid, tvs.getEvaluator().uid)
         self.assert_param_maps_equal(loadedTvs.getEstimatorParamMaps(), tvs.getEstimatorParamMaps())
 
-        tvsModelPath = temp_path + "/tvsModel"
+        tvsModelPath = f"{temp_path}/tvsModel"
         tvsModel.save(tvsModelPath)
         loadedModel = TrainValidationSplitModel.load(tvsModelPath)
         self.assertEqual(loadedModel.bestModel.uid, tvsModel.bestModel.uid)
@@ -804,15 +804,15 @@ class TrainValidationSplitTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         self.assertEqual(len(tvsModel.subModels), len(grid))
 
         # Test the default value for option "persistSubModel" to be "true"
-        testSubPath = temp_path + "/testTrainValidationSplitSubModels"
-        savingPathWithSubModels = testSubPath + "cvModel3"
+        testSubPath = f"{temp_path}/testTrainValidationSplitSubModels"
+        savingPathWithSubModels = f"{testSubPath}cvModel3"
         tvsModel.save(savingPathWithSubModels)
         tvsModel3 = TrainValidationSplitModel.load(savingPathWithSubModels)
         self.assertEqual(len(tvsModel3.subModels), len(grid))
         tvsModel4 = tvsModel3.copy()
         self.assertEqual(len(tvsModel4.subModels), len(grid))
 
-        savingPathWithoutSubModels = testSubPath + "cvModel2"
+        savingPathWithoutSubModels = f"{testSubPath}cvModel2"
         tvsModel.write().option("persistSubModels", "false").save(savingPathWithoutSubModels)
         tvsModel2 = TrainValidationSplitModel.load(savingPathWithoutSubModels)
         self.assertEqual(tvsModel2.subModels, None)
@@ -843,7 +843,7 @@ class TrainValidationSplitTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
 
         tvs = TrainValidationSplit(estimator=ova, estimatorParamMaps=grid, evaluator=evaluator)
         tvsModel = tvs.fit(dataset)
-        tvsPath = temp_path + "/tvs"
+        tvsPath = f"{temp_path}/tvs"
         tvs.save(tvsPath)
         loadedTvs = TrainValidationSplit.load(tvsPath)
         self.assert_param_maps_equal(loadedTvs.getEstimatorParamMaps(), grid)
@@ -859,7 +859,7 @@ class TrainValidationSplitTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
                 else:
                     self.assertEqual(param[p], originalParamMap[i][p])
 
-        tvsModelPath = temp_path + "/tvsModel"
+        tvsModelPath = f"{temp_path}/tvsModel"
         tvsModel.save(tvsModelPath)
         loadedModel = TrainValidationSplitModel.load(tvsModelPath)
         self.assert_param_maps_equal(loadedModel.getEstimatorParamMaps(), grid)
@@ -907,7 +907,7 @@ class TrainValidationSplitTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
             estimatorParamMaps=paramGrid,
             evaluator=MulticlassClassificationEvaluator(),
         )
-        tvsPath = temp_path + "/tvs"
+        tvsPath = f"{temp_path}/tvs"
         tvs.save(tvsPath)
         loadedTvs = TrainValidationSplit.load(tvsPath)
         self.assert_param_maps_equal(loadedTvs.getEstimatorParamMaps(), paramGrid)
@@ -917,7 +917,7 @@ class TrainValidationSplitTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         tvsModel = tvs.fit(training)
 
         # test save/load of CrossValidatorModel
-        tvsModelPath = temp_path + "/tvsModel"
+        tvsModelPath = f"{temp_path}/tvsModel"
         tvsModel.save(tvsModelPath)
         loadedModel = TrainValidationSplitModel.load(tvsModelPath)
         self.assertEqual(loadedModel.bestModel.uid, tvsModel.bestModel.uid)
@@ -934,7 +934,7 @@ class TrainValidationSplitTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
             estimatorParamMaps=paramGrid,
             evaluator=MulticlassClassificationEvaluator(),
         )
-        tvs2Path = temp_path + "/tvs2"
+        tvs2Path = f"{temp_path}/tvs2"
         tvs2.save(tvs2Path)
         loadedTvs2 = TrainValidationSplit.load(tvs2Path)
         self.assert_param_maps_equal(loadedTvs2.getEstimatorParamMaps(), paramGrid)
@@ -943,7 +943,7 @@ class TrainValidationSplitTests(SparkSessionTestCase, ValidatorTestUtilsMixin):
         # Run train validation split, and choose the best set of parameters.
         tvsModel2 = tvs2.fit(training)
         # test save/load of CrossValidatorModel
-        tvsModelPath2 = temp_path + "/tvsModel2"
+        tvsModelPath2 = f"{temp_path}/tvsModel2"
         tvsModel2.save(tvsModelPath2)
         loadedModel2 = TrainValidationSplitModel.load(tvsModelPath2)
         self.assertEqual(loadedModel2.bestModel.uid, tvsModel2.bestModel.uid)

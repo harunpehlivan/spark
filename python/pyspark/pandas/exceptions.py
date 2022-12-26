@@ -31,16 +31,11 @@ class SparkPandasIndexingError(Exception):
 
 def code_change_hint(pandas_function: Optional[str], spark_target_function: Optional[str]) -> str:
     if pandas_function is not None and spark_target_function is not None:
-        return "You are trying to use pandas function {}, use spark function {}".format(
-            pandas_function, spark_target_function
-        )
-    elif pandas_function is not None and spark_target_function is None:
-        return (
-            "You are trying to use pandas function {}, checkout the spark "
-            "user guide to find a relevant function"
-        ).format(pandas_function)
-    elif pandas_function is None and spark_target_function is not None:
-        return "Use spark function {}".format(spark_target_function)
+        return f"You are trying to use pandas function {pandas_function}, use spark function {spark_target_function}"
+    elif pandas_function is not None:
+        return f"You are trying to use pandas function {pandas_function}, checkout the spark user guide to find a relevant function"
+    elif spark_target_function is not None:
+        return f"Use spark function {spark_target_function}"
     else:  # both none
         return "Checkout the spark user guide to find a relevant function"
 
@@ -55,10 +50,10 @@ class SparkPandasNotImplementedError(NotImplementedError):
         self.pandas_source = pandas_function
         self.spark_target = spark_target_function
         hint = code_change_hint(pandas_function, spark_target_function)
-        if len(description) > 0:
-            description += " " + hint
-        else:
+        if not description:
             description = hint
+        else:
+            description += f" {hint}"
         super().__init__(description)
 
 
@@ -80,43 +75,36 @@ class PandasNotImplementedError(NotImplementedError):
         self.method_name = method_name
         self.arg_name = arg_name
         if method_name is not None:
-            if arg_name is not None:
-                msg = "The method `{0}.{1}()` does not support `{2}` parameter. {3}".format(
-                    class_name, method_name, arg_name, reason
-                )
-            else:
+            if arg_name is None:
                 if deprecated:
                     msg = (
                         "The method `{0}.{1}()` is deprecated in pandas and will therefore "
                         + "not be supported in pandas-on-Spark. {2}"
                     ).format(class_name, method_name, reason)
                 else:
-                    if reason == "":
-                        reason = " yet."
-                    else:
-                        reason = ". " + reason
+                    reason = f". {reason}" if reason else " yet."
                     msg = "The method `{0}.{1}()` is not implemented{2}".format(
                         class_name, method_name, reason
                     )
+            else:
+                msg = "The method `{0}.{1}()` does not support `{2}` parameter. {3}".format(
+                    class_name, method_name, arg_name, reason
+                )
         elif scalar_name is not None:
             msg = (
                 "The scalar `{0}.{1}` is not reimplemented in pyspark.pandas;"
                 " use `pd.{1}`.".format(class_name, scalar_name)
             )
+        elif deprecated:
+            msg = (
+                "The property `{0}.{1}()` is deprecated in pandas and will therefore "
+                + "not be supported in pandas-on-Spark. {2}"
+            ).format(class_name, property_name, reason)
         else:
-            if deprecated:
-                msg = (
-                    "The property `{0}.{1}()` is deprecated in pandas and will therefore "
-                    + "not be supported in pandas-on-Spark. {2}"
-                ).format(class_name, property_name, reason)
-            else:
-                if reason == "":
-                    reason = " yet."
-                else:
-                    reason = ". " + reason
-                msg = "The property `{0}.{1}()` is not implemented{2}".format(
-                    class_name, property_name, reason
-                )
+            reason = " yet." if reason == "" else f". {reason}"
+            msg = "The property `{0}.{1}()` is not implemented{2}".format(
+                class_name, property_name, reason
+            )
         super().__init__(msg)
 
 

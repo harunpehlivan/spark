@@ -21,6 +21,7 @@ An interactive shell.
 This file is designed to be launched as a PYTHONSTARTUP script.
 """
 
+
 import atexit
 import os
 import platform
@@ -82,16 +83,16 @@ print(
     % version
 )
 print(
-    "Using Python version %s (%s, %s)"
-    % (platform.python_version(), platform.python_build()[0], platform.python_build()[1])
+    f"Using Python version {platform.python_version()} ({platform.python_build()[0]}, {platform.python_build()[1]})"
 )
 if is_remote():
-    print("Client connected to the Spark Connect server at %s" % (os.environ["SPARK_REMOTE"]))
-else:
-    print("Spark context Web UI available at %s" % (sc.uiWebUrl))  # type: ignore[union-attr]
     print(
-        "Spark context available as 'sc' (master = %s, app id = %s)."
-        % (sc.master, sc.applicationId)  # type: ignore[union-attr]
+        f'Client connected to the Spark Connect server at {os.environ["SPARK_REMOTE"]}'
+    )
+else:
+    print(f"Spark context Web UI available at {sc.uiWebUrl}")
+    print(
+        f"Spark context available as 'sc' (master = {sc.master}, app id = {sc.applicationId})."
     )
 
 print("SparkSession available as 'spark'.")

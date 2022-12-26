@@ -452,7 +452,7 @@ class VectorUDTTests(MLlibTestCase):
     def test_indexed_row_matrix_from_dataframe(self):
         from pyspark.sql.utils import IllegalArgumentException
 
-        df = self.spark.createDataFrame([Row(int(0), Vectors.dense(1))])
+        df = self.spark.createDataFrame([Row(0, Vectors.dense(1))])
         matrix = IndexedRowMatrix(df)
         self.assertEqual(matrix.numRows(), 1)
         self.assertEqual(matrix.numCols(), 1)

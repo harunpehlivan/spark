@@ -274,8 +274,11 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
                 kwargs
             )
 
-        if not isinstance(func_or_funcs, (str, list)):
-            if not isinstance(func_or_funcs, dict) or not all(
+        if isinstance(func_or_funcs, (str, list)):
+            agg_cols = [col.name for col in self._agg_columns]
+            func_or_funcs = {col: func_or_funcs for col in agg_cols}
+
+        elif not isinstance(func_or_funcs, dict) or not all(
                 is_name_like_value(key)
                 and (
                     isinstance(value, str)
@@ -284,14 +287,10 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
                 )
                 for key, value in func_or_funcs.items()
             ):
-                raise ValueError(
-                    "aggs must be a dict mapping from column name "
-                    "to aggregate functions (string or list of strings)."
-                )
-
-        else:
-            agg_cols = [col.name for col in self._agg_columns]
-            func_or_funcs = {col: func_or_funcs for col in agg_cols}
+            raise ValueError(
+                "aggs must be a dict mapping from column name "
+                "to aggregate functions (string or list of strings)."
+            )
 
         psdf: DataFrame = DataFrame(
             GroupBy._spark_groupby(self._psdf, func_or_funcs, self._groupkeys)
@@ -307,10 +306,12 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
             )
 
         if not self._as_index:
-            should_drop_index = set(
-                i for i, gkey in enumerate(self._groupkeys) if gkey._psdf is not self._psdf
-            )
-            if len(should_drop_index) > 0:
+            should_drop_index = {
+                i
+                for i, gkey in enumerate(self._groupkeys)
+                if gkey._psdf is not self._psdf
+            }
+            if should_drop_index:
                 psdf = psdf.reset_index(level=should_drop_index, drop=True)
             if len(should_drop_index) < len(self._groupkeys):
                 psdf = psdf.reset_index()
@@ -703,9 +704,9 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         if is_list_like(q):
             raise NotImplementedError("q doesn't support for list like type for now")
         if not is_number(q):
-            raise TypeError("must be real number, not %s" % type(q).__name__)
+            raise TypeError(f"must be real number, not {type(q).__name__}")
         if not 0 <= q <= 1:
-            raise ValueError("'q' must be between 0 and 1. Got '%s' instead" % q)
+            raise ValueError(f"'q' must be between 0 and 1. Got '{q}' instead")
         return self._reduce_for_stat_function(
             lambda col: F.percentile_approx(col.cast(DoubleType()), q, accuracy),
             accepted_spark_types=(NumericType, BooleanType),
@@ -891,12 +892,11 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
             raise TypeError("min_count must be integer")
 
         if numeric_only is not None and not numeric_only:
-            unsupported = [
+            if unsupported := [
                 col.name
                 for col in self._agg_columns
                 if not isinstance(col.spark.data_type, (NumericType, BooleanType))
-            ]
-            if len(unsupported) > 0:
+            ]:
                 log_advice(
                     "GroupBy.sum() can only support numeric and bool columns even if"
                     f"numeric_only=False, skip unsupported columns: {unsupported}"
@@ -1030,7 +1030,8 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
                 # so we need to create temporary columns to compute the 'abs(x - avg(x))' here.
                 agg_column_name = agg_column._internal.data_spark_column_names[0]
                 new_agg_column_name = verify_temp_column_name(
-                    psdf._internal.spark_frame, "__tmp_agg_col_{}__".format(agg_column_name)
+                    psdf._internal.spark_frame,
+                    f"__tmp_agg_col_{agg_column_name}__",
                 )
                 casted_agg_scol = F.col(agg_column_name).cast("double")
                 new_agg_scols[new_agg_column_name] = F.abs(
@@ -1169,7 +1170,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         if isinstance(n, slice) or is_list_like(n):
             raise NotImplementedError("n doesn't support slice or list for now")
         if not isinstance(n, int):
-            raise TypeError("Invalid index %s" % type(n).__name__)
+            raise TypeError(f"Invalid index {type(n).__name__}")
 
         groupkey_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
         internal, agg_columns, sdf = self._prepare_reduce(
@@ -1951,7 +1952,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         Name: B, dtype: int64
         """
         if not callable(func):
-            raise TypeError("%s object is not callable" % type(func).__name__)
+            raise TypeError(f"{type(func).__name__} object is not callable")
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
@@ -2078,10 +2079,11 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
                 if should_return_series and isinstance(pdf_or_ser, pd.DataFrame):
                     pdf_or_ser = pdf_or_ser.stack()
 
-            if not isinstance(pdf_or_ser, pd.DataFrame):
-                return pd.DataFrame(pdf_or_ser)
-            else:
-                return pdf_or_ser
+            return (
+                pdf_or_ser
+                if isinstance(pdf_or_ser, pd.DataFrame)
+                else pd.DataFrame(pdf_or_ser)
+            )
 
         sdf = GroupBy._spark_group_map_apply(
             psdf,
@@ -2105,10 +2107,8 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
                 ]
 
                 if not any(
-                    [
-                        SPARK_INDEX_NAME_PATTERN.match(index_field.struct_field.name)
-                        for index_field in index_fields
-                    ]
+                    SPARK_INDEX_NAME_PATTERN.match(index_field.struct_field.name)
+                    for index_field in index_fields
                 ):
                     index_names = [(index_field.struct_field.name,) for index_field in index_fields]
                 internal = InternalFrame(
@@ -2174,7 +2174,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         Name: B, dtype: int64
         """
         if not callable(func):
-            raise TypeError("%s object is not callable" % type(func).__name__)
+            raise TypeError(f"{type(func).__name__} object is not callable")
 
         is_series_groupby = isinstance(self, SeriesGroupBy)
 
@@ -2230,7 +2230,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         psdf: DataFrame, groupkeys: List[Series], agg_columns: List[Series]
     ) -> Tuple[DataFrame, List[Label], List[str]]:
         groupkey_labels: List[Label] = [
-            verify_temp_column_name(psdf, "__groupkey_{}__".format(i))
+            verify_temp_column_name(psdf, f"__groupkey_{i}__")
             for i in range(len(groupkeys))
         ]
         psdf = psdf[[s.rename(label) for s, label in zip(groupkeys, groupkey_labels)] + agg_columns]
@@ -2395,7 +2395,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         if self._psdf._internal.index_level != 1:
             raise ValueError("idxmax only support one-level index now")
 
-        groupkey_names = ["__groupkey_{}__".format(i) for i in range(len(self._groupkeys))]
+        groupkey_names = [f"__groupkey_{i}__" for i in range(len(self._groupkeys))]
 
         sdf = self._psdf._internal.spark_frame
         for s, name in zip(self._groupkeys, groupkey_names):
@@ -2406,11 +2406,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         for psser, scol in zip(self._agg_columns, self._agg_columns_scols):
             name = psser._internal.data_spark_column_names[0]
 
-            if skipna:
-                order_column = scol.desc_nulls_last()
-            else:
-                order_column = scol.desc_nulls_first()
-
+            order_column = scol.desc_nulls_last() if skipna else scol.desc_nulls_first()
             window = Window.partitionBy(*groupkey_names).orderBy(
                 order_column, NATURAL_ORDER_COLUMN_NAME
             )
@@ -2478,7 +2474,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         if self._psdf._internal.index_level != 1:
             raise ValueError("idxmin only support one-level index now")
 
-        groupkey_names = ["__groupkey_{}__".format(i) for i in range(len(self._groupkeys))]
+        groupkey_names = [f"__groupkey_{i}__" for i in range(len(self._groupkeys))]
 
         sdf = self._psdf._internal.spark_frame
         for s, name in zip(self._groupkeys, groupkey_names):
@@ -2489,11 +2485,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         for psser, scol in zip(self._agg_columns, self._agg_columns_scols):
             name = psser._internal.data_spark_column_names[0]
 
-            if skipna:
-                order_column = scol.asc_nulls_last()
-            else:
-                order_column = scol.asc_nulls_first()
-
+            order_column = scol.asc_nulls_last() if skipna else scol.asc_nulls_first()
             window = Window.partitionBy(*groupkey_names).orderBy(
                 order_column, NATURAL_ORDER_COLUMN_NAME
             )
@@ -3089,7 +3081,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         2  31  35
         """
         if not callable(func):
-            raise TypeError("%s object is not callable" % type(func).__name__)
+            raise TypeError(f"{type(func).__name__} object is not callable")
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
@@ -3392,7 +3384,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         """
         groupkeys = self._groupkeys
         if not is_hashable(name):
-            raise TypeError("unhashable type: '{}'".format(type(name).__name__))
+            raise TypeError(f"unhashable type: '{type(name).__name__}'")
         elif len(groupkeys) > 1:
             if not isinstance(name, tuple):
                 raise ValueError("must supply a tuple to get_group with multiple grouping keys")
@@ -3494,7 +3486,7 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
         """
         if not isinstance(accuracy, int):
             raise TypeError(
-                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
+                f"accuracy must be an integer; however, got [{type(accuracy).__name__}]"
             )
 
         self._validate_agg_columns(numeric_only=numeric_only, function_name="median")
@@ -3510,24 +3502,19 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
 
     def _validate_agg_columns(self, numeric_only: Optional[bool], function_name: str) -> None:
         """Validate aggregation columns and raise an error or a warning following pandas."""
-        has_non_numeric = False
-        for _agg_col in self._agg_columns:
-            if not isinstance(_agg_col.spark.data_type, (NumericType, BooleanType)):
-                has_non_numeric = True
-                break
+        has_non_numeric = any(
+            not isinstance(_agg_col.spark.data_type, (NumericType, BooleanType))
+            for _agg_col in self._agg_columns
+        )
         if has_non_numeric:
             if isinstance(self, SeriesGroupBy):
                 raise TypeError("Only numeric aggregation column is accepted.")
 
             if not numeric_only:
-                if has_non_numeric:
-                    warnings.warn(
-                        "Dropping invalid columns in DataFrameGroupBy.%s is deprecated. "
-                        "In a future version, a TypeError will be raised. "
-                        "Before calling .%s, select only columns which should be "
-                        "valid for the function." % (function_name, function_name),
-                        FutureWarning,
-                    )
+                warnings.warn(
+                    f"Dropping invalid columns in DataFrameGroupBy.{function_name} is deprecated. In a future version, a TypeError will be raised. Before calling .{function_name}, select only columns which should be valid for the function.",
+                    FutureWarning,
+                )
 
     def _reduce_for_stat_function(
         self,
@@ -3591,10 +3578,12 @@ class GroupBy(Generic[FrameLike], metaclass=ABCMeta):
                 )
             )
         if not self._as_index:
-            should_drop_index = set(
-                i for i, gkey in enumerate(self._groupkeys) if gkey._psdf is not self._psdf
-            )
-            if len(should_drop_index) > 0:
+            should_drop_index = {
+                i
+                for i, gkey in enumerate(self._groupkeys)
+                if gkey._psdf is not self._psdf
+            }
+            if should_drop_index:
                 psdf = psdf.reset_index(level=should_drop_index, drop=True)
             if len(should_drop_index) < len(self._groupkeys):
                 psdf = psdf.reset_index()
@@ -3797,28 +3786,25 @@ class DataFrameGroupBy(GroupBy[DataFrame]):
                 self._groupkeys,
                 dropna=self._dropna,
             )
+        if is_name_like_tuple(item):
+            item = [item]
+        elif is_name_like_value(item):
+            item = [(item,)]
         else:
-            if is_name_like_tuple(item):
-                item = [item]
-            elif is_name_like_value(item):
-                item = [(item,)]
-            else:
-                item = [i if is_name_like_tuple(i) else (i,) for i in item]
-            if not self._as_index:
-                groupkey_names = set(key._column_label for key in self._groupkeys)
-                for name in item:
-                    if name in groupkey_names:
-                        raise ValueError(
-                            "cannot insert {}, already exists".format(name_like_string(name))
-                        )
-            return DataFrameGroupBy(
-                self._psdf,
-                self._groupkeys,
-                as_index=self._as_index,
-                dropna=self._dropna,
-                column_labels_to_exclude=self._column_labels_to_exclude,
-                agg_columns=item,
-            )
+            item = [i if is_name_like_tuple(i) else (i,) for i in item]
+        if not self._as_index:
+            groupkey_names = {key._column_label for key in self._groupkeys}
+            for name in item:
+                if name in groupkey_names:
+                    raise ValueError(f"cannot insert {name_like_string(name)}, already exists")
+        return DataFrameGroupBy(
+            self._psdf,
+            self._groupkeys,
+            as_index=self._as_index,
+            dropna=self._dropna,
+            column_labels_to_exclude=self._column_labels_to_exclude,
+            agg_columns=item,
+        )
 
     def _apply_series_op(
         self,
@@ -3826,9 +3812,7 @@ class DataFrameGroupBy(GroupBy[DataFrame]):
         should_resolve: bool = False,
         numeric_only: bool = False,
     ) -> DataFrame:
-        applied = []
-        for column in self._agg_columns:
-            applied.append(op(column.groupby(self._groupkeys)))
+        applied = [op(column.groupby(self._groupkeys)) for column in self._agg_columns]
         if numeric_only:
             applied = [col for col in applied if isinstance(col.spark.data_type, NumericType)]
             if not applied:
@@ -3984,11 +3968,10 @@ class SeriesGroupBy(GroupBy[Series]):
         if numeric_only and not isinstance(self._agg_columns[0].spark.data_type, NumericType):
             raise DataError("No numeric types to aggregate")
         psser = op(self)
-        if should_resolve:
-            internal = psser._internal.resolved_copy
-            return first_series(DataFrame(internal))
-        else:
+        if not should_resolve:
             return psser.copy()
+        internal = psser._internal.resolved_copy
+        return first_series(DataFrame(internal))
 
     def _handle_output(self, psdf: DataFrame) -> Series:
         return first_series(psdf).rename(self._psser.name)
@@ -4310,9 +4293,11 @@ def is_multi_agg_with_relabel(**kwargs: Any) -> bool:
     >>> is_multi_agg_with_relabel()
     False
     """
-    if not kwargs:
-        return False
-    return all(isinstance(v, tuple) and len(v) == 2 for v in kwargs.values())
+    return (
+        all(isinstance(v, tuple) and len(v) == 2 for v in kwargs.values())
+        if kwargs
+        else False
+    )
 
 
 def normalize_keyword_aggregation(

@@ -387,7 +387,9 @@ class Summarizer:
         col, weightCol = Summarizer._check_param(col, weightCol)
         return Column(
             JavaWrapper._new_java_obj(
-                "org.apache.spark.ml.stat.Summarizer." + metric, col._jc, weightCol._jc
+                f"org.apache.spark.ml.stat.Summarizer.{metric}",
+                col._jc,
+                weightCol._jc,
             )
         )
 

@@ -36,26 +36,26 @@ if __name__ == "__main__":
     metrics = MultilabelMetrics(scoreAndLabels)
 
     # Summary stats
-    print("Recall = %s" % metrics.recall())
-    print("Precision = %s" % metrics.precision())
-    print("F1 measure = %s" % metrics.f1Measure())
-    print("Accuracy = %s" % metrics.accuracy)
+    print(f"Recall = {metrics.recall()}")
+    print(f"Precision = {metrics.precision()}")
+    print(f"F1 measure = {metrics.f1Measure()}")
+    print(f"Accuracy = {metrics.accuracy}")
 
     # Individual label stats
     labels = scoreAndLabels.flatMap(lambda x: x[1]).distinct().collect()
     for label in labels:
-        print("Class %s precision = %s" % (label, metrics.precision(label)))
-        print("Class %s recall = %s" % (label, metrics.recall(label)))
-        print("Class %s F1 Measure = %s" % (label, metrics.f1Measure(label)))
+        print(f"Class {label} precision = {metrics.precision(label)}")
+        print(f"Class {label} recall = {metrics.recall(label)}")
+        print(f"Class {label} F1 Measure = {metrics.f1Measure(label)}")
 
     # Micro stats
-    print("Micro precision = %s" % metrics.microPrecision)
-    print("Micro recall = %s" % metrics.microRecall)
-    print("Micro F1 measure = %s" % metrics.microF1Measure)
+    print(f"Micro precision = {metrics.microPrecision}")
+    print(f"Micro recall = {metrics.microRecall}")
+    print(f"Micro F1 measure = {metrics.microF1Measure}")
 
     # Hamming loss
-    print("Hamming loss = %s" % metrics.hammingLoss)
+    print(f"Hamming loss = {metrics.hammingLoss}")
 
     # Subset accuracy
-    print("Subset accuracy = %s" % metrics.subsetAccuracy)
+    print(f"Subset accuracy = {metrics.subsetAccuracy}")
     # $example off$

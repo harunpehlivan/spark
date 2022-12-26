@@ -49,7 +49,7 @@ class KernelDensity:
     def setSample(self, sample: RDD[float]) -> None:
         """Set sample points from the population. Should be a RDD"""
         if not isinstance(sample, RDD):
-            raise TypeError("samples should be a RDD, received %s" % type(sample))
+            raise TypeError(f"samples should be a RDD, received {type(sample)}")
         self._sample = sample
 
     def estimate(self, points: Iterable[float]) -> ndarray:

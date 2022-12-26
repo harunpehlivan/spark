@@ -167,19 +167,17 @@ class _ImageSchema:
 
         if not isinstance(image, Row):
             raise TypeError(
-                "image argument should be pyspark.sql.types.Row; however, "
-                "it got [%s]." % type(image)
+                f"image argument should be pyspark.sql.types.Row; however, it got [{type(image)}]."
             )
 
         if any(not hasattr(image, f) for f in self.imageFields):
             raise ValueError(
-                "image argument should have attributes specified in "
-                "ImageSchema.imageSchema [%s]." % ", ".join(self.imageFields)
+                f'image argument should have attributes specified in ImageSchema.imageSchema [{", ".join(self.imageFields)}].'
             )
 
-        height = image.height
         width = image.width
         nChannels = image.nChannels
+        height = image.height
         return np.ndarray(
             shape=(height, width, nChannels),
             dtype=np.uint8,
@@ -208,7 +206,7 @@ class _ImageSchema:
 
         if not isinstance(array, np.ndarray):
             raise TypeError(
-                "array argument should be numpy.ndarray; however, it got [%s]." % type(array)
+                f"array argument should be numpy.ndarray; however, it got [{type(array)}]."
             )
 
         if array.ndim != 3:

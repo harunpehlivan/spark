@@ -35,7 +35,7 @@ class DatetimeMethods:
     def __init__(self, series: "ps.Series"):
         if not isinstance(series.spark.data_type, (DateType, TimestampType, TimestampNTZType)):
             raise ValueError(
-                "Cannot call DatetimeMethods on type {}".format(series.spark.data_type)
+                f"Cannot call DatetimeMethods on type {series.spark.data_type}"
             )
         self._data = series
 

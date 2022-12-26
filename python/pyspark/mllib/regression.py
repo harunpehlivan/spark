@@ -85,7 +85,7 @@ class LabeledPoint:
     """
 
     def __init__(self, label: float, features: Iterable[float]):
-        self.label = float(label)
+        self.label = label
         self.features = _convert_to_vector(features)
 
     def __reduce__(self) -> Tuple[Type["LabeledPoint"], Tuple[float, Vector]]:
@@ -95,7 +95,7 @@ class LabeledPoint:
         return "(" + ",".join((str(self.label), str(self.features))) + ")"
 
     def __repr__(self) -> str:
-        return "LabeledPoint(%s, %s)" % (self.label, self.features)
+        return f"LabeledPoint({self.label}, {self.features})"
 
 
 class LinearModel:
@@ -115,7 +115,7 @@ class LinearModel:
 
     def __init__(self, weights: Vector, intercept: float):
         self._coeff = _convert_to_vector(weights)
-        self._intercept = float(intercept)
+        self._intercept = intercept
 
     @property  # type: ignore[misc]
     @since("1.0.0")
@@ -255,8 +255,7 @@ class LinearRegressionModel(LinearRegressionModelBase):
         )
         weights = _java2py(sc, java_model.weights())
         intercept = java_model.intercept()
-        model = LinearRegressionModel(weights, intercept)
-        return model
+        return LinearRegressionModel(weights, intercept)
 
 
 # train_func should take two parameters, namely data and initial_weights, and
@@ -272,7 +271,9 @@ def _regression_train_wrapper(
 
     first = data.first()
     if not isinstance(first, LabeledPoint):
-        raise TypeError("data should be an RDD of LabeledPoint, but got %s" % type(first))
+        raise TypeError(
+            f"data should be an RDD of LabeledPoint, but got {type(first)}"
+        )
     if initial_weights is None:
         initial_weights = [0.0] * len(data.first().features)
     if modelClass == LogisticRegressionModel:
@@ -368,15 +369,15 @@ class LinearRegressionWithSGD:
             return callMLlibFunc(
                 "trainLinearRegressionModelWithSGD",
                 rdd,
-                int(iterations),
-                float(step),
-                float(miniBatchFraction),
+                iterations,
+                step,
+                miniBatchFraction,
                 i,
-                float(regParam),
+                regParam,
                 regType,
-                bool(intercept),
-                bool(validateData),
-                float(convergenceTol),
+                intercept,
+                validateData,
+                convergenceTol,
             )
 
         return _regression_train_wrapper(train, LinearRegressionModel, data, initialWeights)
@@ -465,8 +466,7 @@ class LassoModel(LinearRegressionModelBase):
         java_model = sc._jvm.org.apache.spark.mllib.regression.LassoModel.load(sc._jsc.sc(), path)
         weights = _java2py(sc, java_model.weights())
         intercept = java_model.intercept()
-        model = LassoModel(weights, intercept)
-        return model
+        return LassoModel(weights, intercept)
 
 
 class LassoWithSGD:
@@ -547,14 +547,14 @@ class LassoWithSGD:
             return callMLlibFunc(
                 "trainLassoModelWithSGD",
                 rdd,
-                int(iterations),
-                float(step),
-                float(regParam),
-                float(miniBatchFraction),
+                iterations,
+                step,
+                regParam,
+                miniBatchFraction,
                 i,
-                bool(intercept),
-                bool(validateData),
-                float(convergenceTol),
+                intercept,
+                validateData,
+                convergenceTol,
             )
 
         return _regression_train_wrapper(train, LassoModel, data, initialWeights)
@@ -645,8 +645,7 @@ class RidgeRegressionModel(LinearRegressionModelBase):
         )
         weights = _java2py(sc, java_model.weights())
         intercept = java_model.intercept()
-        model = RidgeRegressionModel(weights, intercept)
-        return model
+        return RidgeRegressionModel(weights, intercept)
 
 
 class RidgeRegressionWithSGD:
@@ -729,14 +728,14 @@ class RidgeRegressionWithSGD:
             return callMLlibFunc(
                 "trainRidgeModelWithSGD",
                 rdd,
-                int(iterations),
-                float(step),
-                float(regParam),
-                float(miniBatchFraction),
+                iterations,
+                step,
+                regParam,
+                miniBatchFraction,
                 i,
-                bool(intercept),
-                bool(validateData),
-                float(convergenceTol),
+                intercept,
+                validateData,
+                convergenceTol,
             )
 
         return _regression_train_wrapper(train, RidgeRegressionModel, data, initialWeights)
@@ -908,7 +907,7 @@ class IsotonicRegression:
             (default: True)
         """
         boundaries, predictions = callMLlibFunc(
-            "trainIsotonicRegressionModel", data.map(_convert_to_vector), bool(isotonic)
+            "trainIsotonicRegressionModel", data.map(_convert_to_vector), isotonic
         )
         return IsotonicRegressionModel(boundaries.toArray(), predictions.toArray(), isotonic)
 
@@ -934,7 +933,7 @@ class StreamingLinearAlgorithm:
 
     def _validate(self, dstream: Any) -> None:
         if not isinstance(dstream, DStream):
-            raise TypeError("dstream should be a DStream object, got %s" % type(dstream))
+            raise TypeError(f"dstream should be a DStream object, got {type(dstream)}")
         if not self._model:
             raise ValueError("Model must be initialized using setInitialWeights")
 

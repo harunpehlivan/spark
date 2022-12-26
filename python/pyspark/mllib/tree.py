@@ -414,7 +414,7 @@ class RandomForest:
         first = data.first()
         assert isinstance(first, LabeledPoint), "the data should be RDD of LabeledPoint"
         if featureSubsetStrategy not in cls.supportedFeatureSubsetStrategies:
-            raise ValueError("unsupported featureSubsetStrategy: %s" % featureSubsetStrategy)
+            raise ValueError(f"unsupported featureSubsetStrategy: {featureSubsetStrategy}")
         if seed is None:
             seed = random.randint(0, 1 << 30)
         model = callMLlibFunc(

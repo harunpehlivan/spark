@@ -155,7 +155,7 @@ def schema_inference_example(spark: SparkSession) -> None:
 
     # The results of SQL queries are Dataframe objects.
     # rdd returns the content as an :class:`pyspark.RDD` of :class:`Row`.
-    teenNames = teenagers.rdd.map(lambda p: "Name: " + p.name).collect()
+    teenNames = teenagers.rdd.map(lambda p: f"Name: {p.name}").collect()
     for name in teenNames:
         print(name)
     # Name: Justin

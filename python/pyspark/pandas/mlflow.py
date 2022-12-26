@@ -76,10 +76,10 @@ class PythonModelWrapper:
         return pyfunc.spark_udf(spark, model_uri=self._model_uri, result_type=self._return_type)
 
     def __str__(self) -> str:
-        return "PythonModelWrapper({})".format(str(self._model))
+        return f"PythonModelWrapper({str(self._model)})"
 
     def __repr__(self) -> str:
-        return "PythonModelWrapper({})".format(repr(self._model))
+        return f"PythonModelWrapper({repr(self._model)})"
 
     def predict(self, data: Union[DataFrame, pd.DataFrame]) -> Union[Series, pd.Series]:
         """
@@ -106,7 +106,7 @@ class PythonModelWrapper:
             )
             return first_series(DataFrame(internal))
         else:
-            raise ValueError("unknown data type: {}".format(type(data).__name__))
+            raise ValueError(f"unknown data type: {type(data).__name__}")
 
 
 def load_model(

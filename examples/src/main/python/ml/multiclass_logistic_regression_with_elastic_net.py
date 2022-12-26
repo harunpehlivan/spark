@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     # Print the coefficients and intercept for multinomial logistic regression
     print("Coefficients: \n" + str(lrModel.coefficientMatrix))
-    print("Intercept: " + str(lrModel.interceptVector))
+    print(f"Intercept: {str(lrModel.interceptVector)}")
 
     trainingSummary = lrModel.summary
 

@@ -38,7 +38,7 @@ import sparktestsupport.modules as modules
 def setup_test_environ(environ):
     print("[info] Setup the following environment variables for tests: ")
     for (k, v) in environ.items():
-        print("%s=%s" % (k, v))
+        print(f"{k}={v}")
         os.environ[k] = v
 
 
@@ -60,7 +60,7 @@ def determine_java_executable():
     # check if there is an executable at $JAVA_HOME/bin/java
     java_exe = which(os.path.join(java_home, "bin", "java")) if java_home else None
     # if the java_exe wasn't set, check for a `java` version on the $PATH
-    return java_exe if java_exe else which("java")
+    return java_exe or which("java")
 
 
 # -------------------------------------------------------------------------------------------------
@@ -123,18 +123,16 @@ def build_spark_documentation():
 
     os.chdir(os.path.join(SPARK_HOME, "docs"))
 
-    bundle_bin = which("bundle")
+    if bundle_bin := which("bundle"):
+        run_cmd([bundle_bin, "install"])
+        run_cmd([bundle_bin, "exec", "jekyll", "build"])
 
-    if not bundle_bin:
+    else:
         print(
             "[error] Cannot find a version of `bundle` on the system; please",
             " install one with `gem install bundler` and retry to build documentation.",
         )
         sys.exit(int(os.environ.get("CURRENT_BLOCK", 255)))
-    else:
-        run_cmd([bundle_bin, "install"])
-        run_cmd([bundle_bin, "exec", "jekyll", "build"])
-
     os.chdir(SPARK_HOME)
 
 
@@ -187,22 +185,23 @@ def get_scala_profiles(scala_version):
 
     if scala_version in sbt_maven_scala_profiles:
         return sbt_maven_scala_profiles[scala_version]
-    else:
-        print(
-            "[error] Could not find",
-            scala_version,
-            "in the list. Valid options",
-            " are",
-            sbt_maven_scala_profiles.keys(),
-        )
-        sys.exit(int(os.environ.get("CURRENT_BLOCK", 255)))
+    print(
+        "[error] Could not find",
+        scala_version,
+        "in the list. Valid options",
+        " are",
+        sbt_maven_scala_profiles.keys(),
+    )
+    sys.exit(int(os.environ.get("CURRENT_BLOCK", 255)))
 
 
 def switch_scala_version(scala_version):
     """
     Switch the code base to use the given Scala version.
     """
-    set_title_and_block("Switch the Scala version to %s" % scala_version, "BLOCK_SCALA_VERSION")
+    set_title_and_block(
+        f"Switch the Scala version to {scala_version}", "BLOCK_SCALA_VERSION"
+    )
 
     assert scala_version is not None
     ver_num = scala_version[-4:]  # Simply extract. e.g.) 2.13 from scala2.13
@@ -223,15 +222,14 @@ def get_hadoop_profiles(hadoop_version):
 
     if hadoop_version in sbt_maven_hadoop_profiles:
         return sbt_maven_hadoop_profiles[hadoop_version]
-    else:
-        print(
-            "[error] Could not find",
-            hadoop_version,
-            "in the list. Valid options",
-            " are",
-            sbt_maven_hadoop_profiles.keys(),
-        )
-        sys.exit(int(os.environ.get("CURRENT_BLOCK", 255)))
+    print(
+        "[error] Could not find",
+        hadoop_version,
+        "in the list. Valid options",
+        " are",
+        sbt_maven_hadoop_profiles.keys(),
+    )
+    sys.exit(int(os.environ.get("CURRENT_BLOCK", 255)))
 
 
 def build_spark_maven(extra_profiles):
@@ -365,11 +363,13 @@ def run_scala_tests(build_tool, extra_profiles, test_modules, excluded_tags, inc
         test_profiles += ["-Dtest.exclude.tags=" + ",".join(excluded_tags)]
 
     # set up java11 env if this is a pull request build with 'test-java11' in the title
-    if "ghprbPullTitle" in os.environ:
-        if "test-java11" in os.environ["ghprbPullTitle"].lower():
-            os.environ["JAVA_HOME"] = "/usr/java/jdk-11.0.1"
-            os.environ["PATH"] = "%s/bin:%s" % (os.environ["JAVA_HOME"], os.environ["PATH"])
-            test_profiles += ["-Djava.version=11"]
+    if (
+        "ghprbPullTitle" in os.environ
+        and "test-java11" in os.environ["ghprbPullTitle"].lower()
+    ):
+        os.environ["JAVA_HOME"] = "/usr/java/jdk-11.0.1"
+        os.environ["PATH"] = f'{os.environ["JAVA_HOME"]}/bin:{os.environ["PATH"]}'
+        test_profiles += ["-Djava.version=11"]
 
     if build_tool == "maven":
         run_scala_tests_maven(test_profiles)
@@ -390,7 +390,7 @@ def run_python_tests(test_modules, parallelism, with_coverage=False):
         script = "run-tests"
     command = [os.path.join(SPARK_HOME, "python", script)]
     if test_modules != [modules.root]:
-        command.append("--modules=%s" % ",".join(m.name for m in test_modules))
+        command.append(f'--modules={",".join(m.name for m in test_modules)}')
     command.append("--parallelism=%i" % parallelism)
     run_cmd(command)
 
@@ -452,7 +452,7 @@ def parse_opts():
 
     args, unknown = parser.parse_known_args()
     if unknown:
-        parser.error("Unsupported arguments: %s" % " ".join(unknown))
+        parser.error(f'Unsupported arguments: {" ".join(unknown)}')
     if args.parallelism < 1:
         parser.error("Parallelism cannot be less than 1")
     return args
@@ -516,11 +516,7 @@ def main():
         build_tool = "sbt"
         scala_version = os.environ.get("SCALA_PROFILE")
         hadoop_version = os.environ.get("HADOOP_PROFILE", "hadoop3")
-        if "GITHUB_ACTIONS" in os.environ:
-            test_env = "github_actions"
-        else:
-            test_env = "local"
-
+        test_env = "github_actions" if "GITHUB_ACTIONS" in os.environ else "local"
     extra_profiles = get_hadoop_profiles(hadoop_version) + get_scala_profiles(scala_version)
 
     print(
@@ -548,7 +544,7 @@ def main():
                 changed_files = identify_changed_files_from_git_commits(
                     "HEAD", target_ref=os.environ["APACHE_SPARK_REF"]
                 )
-            elif is_github_prev_sha:
+            else:
                 changed_files = identify_changed_files_from_git_commits(
                     os.environ["GITHUB_SHA"], target_ref=os.environ["GITHUB_PREV_SHA"]
                 )
@@ -563,12 +559,10 @@ def main():
                 test_modules = list(set(modules_to_test).intersection(test_modules))
 
         changed_modules = test_modules
-        if len(changed_modules) == 0:
+        if not changed_modules:
             print("[info] There are no modules to test, exiting without testing.")
             return
 
-    # If we're running the tests in AMPLab Jenkins, calculate the diff from the targeted branch, and
-    # detect modules to test.
     elif test_env == "amplab_jenkins" and os.environ.get("AMP_JENKINS_PRB"):
         target_branch = os.environ["ghprbTargetBranch"]
         changed_files = identify_changed_files_from_git_commits("HEAD", target_branch=target_branch)
@@ -595,7 +589,7 @@ def main():
     # module. So here we should use changed_modules rather than test_modules.
     test_environ = {}
     for m in changed_modules:
-        test_environ.update(m.environ)
+        test_environ |= m.environ
     setup_test_environ(test_environ)
 
     if scala_version is not None:
@@ -669,8 +663,10 @@ def _test():
     import doctest
     import sparktestsupport.utils
 
-    failure_count = doctest.testmod(sparktestsupport.utils)[0] + doctest.testmod()[0]
-    if failure_count:
+    if (
+        failure_count := doctest.testmod(sparktestsupport.utils)[0]
+        + doctest.testmod()[0]
+    ):
         sys.exit(-1)
 
 

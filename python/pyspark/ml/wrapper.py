@@ -120,12 +120,12 @@ class JavaWrapper:
         assert sc._gateway is not None
 
         java_array = None
-        if len(pylist) > 0 and isinstance(pylist[0], list):
+        if pylist and isinstance(pylist[0], list):
             # If pylist is a 2D array, then a 2D java array will be created.
             # The 2D array is a square, non-jagged 2D array that is big enough for all elements.
             inner_array_length = 0
-            for i in range(len(pylist)):
-                inner_array_length = max(inner_array_length, len(pylist[i]))
+            for item in pylist:
+                inner_array_length = max(inner_array_length, len(item))
             java_array = sc._gateway.new_array(java_class, len(pylist), inner_array_length)
             for i in range(len(pylist)):
                 for j in range(len(pylist[i])):
@@ -173,7 +173,7 @@ class JavaParams(JavaWrapper, Params, metaclass=ABCMeta):
             if self.hasDefault(param):
                 pair = self._make_java_param_pair(param, self._defaultParamMap[param])
                 pair_defaults.append(pair)
-        if len(pair_defaults) > 0:
+        if pair_defaults:
             sc = SparkContext._active_spark_context
             assert sc is not None and sc._jvm is not None
 
@@ -238,7 +238,7 @@ class JavaParams(JavaWrapper, Params, metaclass=ABCMeta):
         sc = SparkContext._active_spark_context
         assert sc is not None
 
-        paramMap = dict()
+        paramMap = {}
         for pair in javaParamMap.toList():
             param = pair.param()
             if self.hasParam(str(param.name())):
@@ -326,7 +326,7 @@ class JavaParams(JavaWrapper, Params, metaclass=ABCMeta):
             Copy of this instance
         """
         if extra is None:
-            extra = dict()
+            extra = {}
         that = super(JavaParams, self).copy(extra)
         if self._java_obj is not None:
             that._java_obj = self._java_obj.copy(self._empty_java_param_map())

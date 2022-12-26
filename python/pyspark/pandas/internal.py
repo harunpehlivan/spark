@@ -807,7 +807,7 @@ class InternalFrame:
                     is_name_like_tuple(column_label, check_type=True)
                     for column_label in column_labels
                 ), column_labels
-                assert len(set(len(label) for label in column_labels)) <= 1, column_labels
+                assert len({len(label) for label in column_labels}) <= 1, column_labels
 
         self._column_labels: List[Label] = column_labels
 
@@ -815,7 +815,7 @@ class InternalFrame:
         if column_label_names is None:
             column_label_names = [None] * column_labels_level(self._column_labels)
         else:
-            if len(self._column_labels) > 0:
+            if self._column_labels:
                 assert len(column_label_names) == column_labels_level(self._column_labels), (
                     len(column_label_names),
                     column_labels_level(self._column_labels),
@@ -859,7 +859,7 @@ class InternalFrame:
         index_column = SPARK_DEFAULT_INDEX_NAME
         assert (
             index_column not in sdf.columns
-        ), "'%s' already exists in the Spark column names '%s'" % (index_column, sdf.columns)
+        ), f"'{index_column}' already exists in the Spark column names '{sdf.columns}'"
 
         if default_index_type is None:
             default_index_type = ps.get_option("compute.default_index_type")
@@ -915,14 +915,17 @@ class InternalFrame:
                 sdf._jdf.toDF().withSequenceColumn(column_name),
                 sdf.sparkSession,
             )
-        else:
-            cnt = sdf.count()
-            if cnt > 0:
-                return default_session().range(cnt).toDF(column_name)
-            else:
-                return default_session().createDataFrame(
-                    [], schema=StructType().add(column_name, data_type=LongType(), nullable=False)
-                )
+        cnt = sdf.count()
+        return (
+            default_session().range(cnt).toDF(column_name)
+            if cnt > 0
+            else default_session().createDataFrame(
+                [],
+                schema=StructType().add(
+                    column_name, data_type=LongType(), nullable=False
+                ),
+            )
+        )
 
     def spark_column_for(self, label: Label) -> Column:
         """Return Spark Column for the given column label."""
@@ -1043,10 +1046,14 @@ class InternalFrame:
         and should be only used for internal purposes.
         """
         index_spark_columns = self.index_spark_columns
-        data_columns = []
-        for spark_column in self.data_spark_columns:
-            if all(not spark_column_equals(spark_column, scol) for scol in index_spark_columns):
-                data_columns.append(spark_column)
+        data_columns = [
+            spark_column
+            for spark_column in self.data_spark_columns
+            if all(
+                not spark_column_equals(spark_column, scol)
+                for scol in index_spark_columns
+            )
+        ]
         return self.spark_frame.select(index_spark_columns + data_columns)
 
     @lazy_property

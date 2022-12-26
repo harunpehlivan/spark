@@ -39,6 +39,7 @@ r"""
 
  One recommended <window duration>, <slide duration> pair is 10, 5
 """
+
 import sys
 
 from pyspark.sql import SparkSession
@@ -47,7 +48,7 @@ from pyspark.sql.functions import split
 from pyspark.sql.functions import window
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5 and len(sys.argv) != 4:
+    if len(sys.argv) not in [5, 4]:
         msg = ("Usage: structured_network_wordcount_windowed.py <hostname> <port> "
                "<window duration in seconds> [<slide duration in seconds>]")
         print(msg, file=sys.stderr)
@@ -59,8 +60,8 @@ if __name__ == "__main__":
     slideSize = int(sys.argv[4]) if (len(sys.argv) == 5) else windowSize
     if slideSize > windowSize:
         print("<slide duration> must be less than or equal to <window duration>", file=sys.stderr)
-    windowDuration = '{} seconds'.format(windowSize)
-    slideDuration = '{} seconds'.format(slideSize)
+    windowDuration = f'{windowSize} seconds'
+    slideDuration = f'{slideSize} seconds'
 
     spark = SparkSession\
         .builder\

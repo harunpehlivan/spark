@@ -90,7 +90,7 @@ class Module(object):
         return any(re.match(p, filename) for p in self.source_file_prefixes)
 
     def __repr__(self):
-        return "Module<%s>" % self.name
+        return f"Module<{self.name}>"
 
     def __lt__(self, other):
         return self.name < other.name

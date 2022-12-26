@@ -26,12 +26,14 @@ if __name__ == "__main__":
     # $example on$
     # Load and parse the data
     data = sc.textFile("data/mllib/pic_data.txt")
-    similarities = data.map(lambda line: tuple([float(x) for x in line.split(' ')]))
+    similarities = data.map(lambda line: tuple(float(x) for x in line.split(' ')))
 
     # Cluster the data into two classes using PowerIterationClustering
     model = PowerIterationClustering.train(similarities, 2, 10)
 
-    model.assignments().foreach(lambda x: print(str(x.id) + " -> " + str(x.cluster)))
+    model.assignments().foreach(
+        lambda x: print(f"{str(x.id)} -> {str(x.cluster)}")
+    )
 
     # Save and load model
     model.save(sc, "target/org/apache/spark/PythonPowerIterationClusteringExample/PICModel")

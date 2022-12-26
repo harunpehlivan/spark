@@ -64,7 +64,7 @@ class IndexerLike:
 
         assert isinstance(
             psdf_or_psser, (DataFrame, Series)
-        ), "unexpected argument type: {}".format(type(psdf_or_psser))
+        ), f"unexpected argument type: {type(psdf_or_psser)}"
         self._psdf_or_psser = psdf_or_psser
 
     @property
@@ -83,9 +83,8 @@ class IndexerLike:
     def _psdf(self) -> "DataFrame":
         if self._is_df:
             return cast("DataFrame", self._psdf_or_psser)
-        else:
-            assert self._is_series
-            return self._psdf_or_psser._psdf
+        assert self._is_series
+        return self._psdf_or_psser._psdf
 
     @property
     def _internal(self) -> InternalFrame:
@@ -144,12 +143,12 @@ class AtIndexer(IndexerLike):
             col_sel = self._psdf_or_psser._column_label
 
         if self._internal.index_level == 1:
-            if not is_name_like_value(row_sel, allow_none=False, allow_tuple=False):
+            if is_name_like_value(row_sel, allow_none=False, allow_tuple=False):
+                row_sel = (row_sel,)
+            else:
                 raise ValueError("At based indexing on a single index can only have a single value")
-            row_sel = (row_sel,)
-        else:
-            if not is_name_like_tuple(row_sel, allow_none=False):
-                raise ValueError("At based indexing on multi-index can only have tuple values")
+        elif not is_name_like_tuple(row_sel, allow_none=False):
+            raise ValueError("At based indexing on multi-index can only have tuple values")
 
         if col_sel is not None:
             if not is_name_like_value(col_sel, allow_none=False):
@@ -526,16 +525,11 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 data_spark_columns = [scol_for(sdf, col) for col in data_columns]
 
             if limit is not None:
-                if limit >= 0:
-                    sdf = sdf.limit(limit)
-                else:
-                    sdf = sdf.limit(sdf.count() + limit)
+                sdf = sdf.limit(limit) if limit >= 0 else sdf.limit(sdf.count() + limit)
                 sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME)
         except AnalysisException:
             raise KeyError(
-                "[{}] don't exist in columns".format(
-                    [col._jc.toString() for col in data_spark_columns]
-                )
+                f"[{[col._jc.toString() for col in data_spark_columns]}] don't exist in columns"
             )
 
         internal = InternalFrame(
@@ -558,15 +552,14 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
         else:
             psdf_or_psser = psdf
 
-        if remaining_index is not None and remaining_index == 0:
-            pdf_or_pser = psdf_or_psser.head(2)._to_pandas()
-            length = len(pdf_or_pser)
-            if length == 0:
-                raise KeyError(name_like_string(key))
-            elif length == 1:
-                return pdf_or_pser.iloc[0]
-            else:
-                return psdf_or_psser
+        if remaining_index is None or remaining_index != 0:
+            return psdf_or_psser
+        pdf_or_pser = psdf_or_psser.head(2)._to_pandas()
+        length = len(pdf_or_pser)
+        if length == 0:
+            raise KeyError(name_like_string(key))
+        elif length == 1:
+            return pdf_or_pser.iloc[0]
         else:
             return psdf_or_psser
 
@@ -601,13 +594,9 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
                 psser = psdf._psser_for(column_label)
                 if isinstance(key, Series):
-                    key = F.col(
-                        "`{}`".format(psdf[temp_key_col]._internal.data_spark_column_names[0])
-                    )
+                    key = F.col(f"`{psdf[temp_key_col]._internal.data_spark_column_names[0]}`")
                 if isinstance(value, Series):
-                    value = F.col(
-                        "`{}`".format(psdf[temp_value_col]._internal.data_spark_column_names[0])
-                    )
+                    value = F.col(f"`{psdf[temp_value_col]._internal.data_spark_column_names[0]}`")
 
                 type(self)(psser)[key] = value
 
@@ -635,9 +624,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
             if isinstance(value, (Series, Column)):
                 if remaining_index is not None and remaining_index == 0:
-                    raise ValueError(
-                        "No axis named {} for object type {}".format(key, type(value).__name__)
-                    )
+                    raise ValueError(f"No axis named {key} for object type {type(value).__name__}")
                 if isinstance(value, Series):
                     value = value.spark.column
             else:
@@ -692,12 +679,10 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
                 if isinstance(rows_sel, Series):
                     rows_sel = F.col(
-                        "`{}`".format(psdf[temp_key_col]._internal.data_spark_column_names[0])
+                        f"`{psdf[temp_key_col]._internal.data_spark_column_names[0]}`"
                     )
                 if isinstance(value, Series):
-                    value = F.col(
-                        "`{}`".format(psdf[temp_value_col]._internal.data_spark_column_names[0])
-                    )
+                    value = F.col(f"`{psdf[temp_value_col]._internal.data_spark_column_names[0]}`")
 
                 type(self)(psdf)[rows_sel, cols_sel] = value
 
@@ -758,9 +743,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                     )
                 elif len(label) > self._internal.column_labels_level:
                     raise KeyError(
-                        "Key length ({}) exceeds index depth ({})".format(
-                            len(label), self._internal.column_labels_level
-                        )
+                        f"Key length ({len(label)}) exceeds index depth ({self._internal.column_labels_level})"
                     )
                 column_labels.append(label)
                 new_data_spark_columns.append(F.when(cond, value).alias(name_like_string(label)))

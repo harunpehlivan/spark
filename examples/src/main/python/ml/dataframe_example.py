@@ -19,6 +19,7 @@
 An example of how to use DataFrame for ML. Run with::
     bin/spark-submit examples/src/main/python/ml/dataframe_example.py <input_path>
 """
+
 import os
 import sys
 import tempfile
@@ -43,7 +44,7 @@ if __name__ == "__main__":
         .getOrCreate()
 
     # Load an input file
-    print("Loading LIBSVM file with UDT from " + input_path + ".")
+    print(f"Loading LIBSVM file with UDT from {input_path}.")
     df = spark.read.format("libsvm").load(input_path).cache()
     print("Schema from LIBSVM:")
     df.printSchema()
@@ -64,11 +65,11 @@ if __name__ == "__main__":
     # Save the records in a parquet file.
     tempdir = tempfile.NamedTemporaryFile(delete=False).name
     os.unlink(tempdir)
-    print("Saving to " + tempdir + " as Parquet file.")
+    print(f"Saving to {tempdir} as Parquet file.")
     df.write.parquet(tempdir)
 
     # Load the records back.
-    print("Loading Parquet file with UDT from " + tempdir)
+    print(f"Loading Parquet file with UDT from {tempdir}")
     newDF = spark.read.parquet(tempdir)
     print("Schema from Parquet:")
     newDF.printSchema()

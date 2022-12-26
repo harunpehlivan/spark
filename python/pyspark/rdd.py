@@ -180,7 +180,7 @@ def portable_hash(x: Hashable) -> int:
         h ^= len(x)
         if h == -1:
             h = -2
-        return int(h)
+        return h
     return hash(x)
 
 
@@ -253,6 +253,9 @@ def _load_from_socket(sock_info: "JavaArray", serializer: Serializer) -> Iterato
 
 
 def _local_iterator_from_socket(sock_info: "JavaArray", serializer: Serializer) -> Iterator[Any]:
+
+
+
     class PyLocalIterable:
         """Create a synchronous local iterable over a socket"""
 
@@ -278,10 +281,7 @@ def _local_iterator_from_socket(sock_info: "JavaArray", serializer: Serializer) 
 
                     # Load the partition data as a stream and read each item
                     self._read_iter = self._serializer.load_stream(self._sockfile)
-                    for item in self._read_iter:
-                        yield item
-
-                # An error occurred, join serving thread and raise any exceptions from the JVM
+                    yield from self._read_iter
                 elif self._read_status == -1:
                     self.jsocket_auth_server.getResult()
 
@@ -289,15 +289,13 @@ def _local_iterator_from_socket(sock_info: "JavaArray", serializer: Serializer) 
             # If local iterator is not fully consumed,
             if self._read_status == 1:
                 try:
-                    # Finish consuming partition data stream
-                    for _ in self._read_iter:
-                        pass
                     # Tell Java to stop sending data and close connection
                     write_int(0, self._sockfile)
                     self._sockfile.flush()
                 except Exception:
                     # Ignore any errors, socket is automatically closed when garbage-collected
                     pass
+
 
     return iter(PyLocalIterable(sock_info, serializer))
 
@@ -1041,7 +1039,7 @@ class RDD(Generic[T_co]):
         >>> 6 <= rdd.sample(False, 0.1, 81).count() <= 14
         True
         """
-        if not fraction >= 0:
+        if fraction < 0:
             raise ValueError("Fraction must be nonnegative.")
         return self.mapPartitionsWithIndex(RDDSampler(withReplacement, fraction, seed).func, True)
 
@@ -1080,14 +1078,13 @@ class RDD(Generic[T_co]):
         >>> 250 < rdd2.count() < 350
         True
         """
-        if not all(w >= 0 for w in weights):
+        if any(w < 0 for w in weights):
             raise ValueError("Weights must be nonnegative")
         s = float(sum(weights))
-        if not s > 0:
+        if s <= 0:
             raise ValueError("Sum of weights must be positive")
         cweights = [0.0]
-        for w in weights:
-            cweights.append(cweights[-1] + w / s)
+        cweights.extend(cweights[-1] + w / s for w in weights)
         if seed is None:
             seed = random.randint(0, 2**32 - 1)
         return [
@@ -1177,7 +1174,7 @@ class RDD(Generic[T_co]):
 
         rand.shuffle(samples)
 
-        return samples[0:num]
+        return samples[:num]
 
     @staticmethod
     def _computeFractionForSampleSize(
@@ -1205,9 +1202,7 @@ class RDD(Generic[T_co]):
         """
         fraction = float(sampleSizeLowerBound) / total
         if withReplacement:
-            numStDev = 5
-            if sampleSizeLowerBound < 12:
-                numStDev = 9
+            numStDev = 9 if sampleSizeLowerBound < 12 else 5
             return fraction + numStDev * sqrt(fraction / total)
         else:
             delta = 0.00005
@@ -1504,15 +1499,12 @@ class RDD(Generic[T_co]):
         # an implicit boundary
         bounds = [
             samples[int(len(samples) * (i + 1) / numPartitions)]
-            for i in range(0, numPartitions - 1)
+            for i in range(numPartitions - 1)
         ]
 
         def rangePartitioner(k: K) -> int:
             p = bisect.bisect_left(bounds, keyfunc(k))
-            if ascending:
-                return p
-            else:
-                return numPartitions - 1 - p  # type: ignore[operator]
+            return p if ascending else numPartitions - 1 - p
 
         return self.partitionBy(numPartitions, rangePartitioner).mapPartitions(sortPartition, True)
 
@@ -1683,7 +1675,7 @@ class RDD(Generic[T_co]):
         ['1', '2', '', '3']
         """
         if env is None:
-            env = dict()
+            env = {}
 
         def func(iterator: Iterable[T]) -> Iterable[str]:
             pipe = Popen(shlex.split(command), env=env, stdin=PIPE, stdout=PIPE)
@@ -1704,8 +1696,7 @@ class RDD(Generic[T_co]):
                         "with error code %d" % (command, pipe.returncode)
                     )
                 else:
-                    for i in range(0):
-                        yield i
+                    yield from range(0)
 
             return (
                 cast(bytes, x).rstrip(b"\n").decode("utf-8")
@@ -2387,11 +2378,7 @@ class RDD(Generic[T_co]):
 
             # filter out non-comparable elements
             def comparable(x: Any) -> bool:
-                if x is None:
-                    return False
-                if type(x) is float and isnan(x):
-                    return False
-                return True
+                return False if x is None else type(x) is not float or not isnan(x)
 
             filtered = self.filter(comparable)
 
@@ -2751,12 +2738,10 @@ class RDD(Generic[T_co]):
 
         if num == 0 or self.getNumPartitions() == 0:
             return []
-        else:
+        def merge(a: List[T], b: List[T]) -> List[T]:
+            return heapq.nsmallest(num, a + b, key)
 
-            def merge(a: List[T], b: List[T]) -> List[T]:
-                return heapq.nsmallest(num, a + b, key)
-
-            return self.mapPartitions(lambda it: [heapq.nsmallest(num, it, key)]).reduce(merge)
+        return self.mapPartitions(lambda it: [heapq.nsmallest(num, it, key)]).reduce(merge)
 
     def take(self: "RDD[T]", num: int) -> List[T]:
         """
@@ -2813,7 +2798,7 @@ class RDD(Generic[T_co]):
                 # quadruple and retry.  Otherwise, interpolate the number of
                 # partitions we need to try, but overestimate it by 50%.
                 # We also cap the estimation in the end.
-                if len(items) == 0:
+                if not items:
                     numPartsToTry = partsScanned * 4
                 else:
                     # the first parameter of max is >=1 whenever partsScanned >= 2
@@ -2866,8 +2851,7 @@ class RDD(Generic[T_co]):
             ...
         ValueError: RDD is empty
         """
-        rs = self.take(1)
-        if rs:
+        if rs := self.take(1):
             return rs[0]
         raise ValueError("RDD is empty")
 
@@ -4390,7 +4374,7 @@ class RDD(Generic[T_co]):
         True
         """
         for fraction in fractions.values():
-            assert fraction >= 0.0, "Negative fraction value: %s" % fraction
+            assert fraction >= 0.0, f"Negative fraction value: {fraction}"
         return self.mapPartitionsWithIndex(
             RDDStratifiedSampler(withReplacement, fractions, seed).func, True
         )
@@ -4572,7 +4556,7 @@ class RDD(Generic[T_co]):
         >>> sc.parallelize([1, 2, 3, 4, 5], 3).coalesce(1).glom().collect()
         [[1, 2, 3, 4, 5]]
         """
-        if not numPartitions > 0:
+        if numPartitions <= 0:
             raise ValueError("Number of partitions must be positive.")
         if shuffle:
             # Decrease the batch size in order to distribute evenly the elements across output
@@ -4621,9 +4605,7 @@ class RDD(Generic[T_co]):
         """
 
         def get_batch_size(ser: Serializer) -> int:
-            if isinstance(ser, BatchedSerializer):
-                return ser.batchSize
-            return 1  # not batched
+            return ser.batchSize if isinstance(ser, BatchedSerializer) else 1
 
         def batch_as(rdd: "RDD[V]", batchSize: int) -> "RDD[V]":
             return rdd._reserialize(BatchedSerializer(CPickleSerializer(), batchSize))
@@ -4745,7 +4727,7 @@ class RDD(Generic[T_co]):
         True
         """
         n = self._jrdd.name()
-        return n if n else None
+        return n or None
 
     def setName(self: "RDD[T]", name: str) -> "RDD[T]":
         """
@@ -4821,14 +4803,13 @@ class RDD(Generic[T_co]):
         Serialized 1x Replicated
         """
         java_storage_level = self._jrdd.getStorageLevel()
-        storage_level = StorageLevel(
+        return StorageLevel(
             java_storage_level.useDisk(),
             java_storage_level.useMemory(),
             java_storage_level.useOffHeap(),
             java_storage_level.deserialized(),
             java_storage_level.replication(),
         )
-        return storage_level
 
     def _defaultReducePartitions(self) -> int:
         """
@@ -4925,7 +4906,7 @@ class RDD(Generic[T_co]):
         >>> rdd.countApprox(1000, 1.0)
         1000
         """
-        drdd = self.mapPartitions(lambda it: [float(sum(1 for i in it))])
+        drdd = self.mapPartitions(lambda it: [float(sum(1 for _ in it))])
         return int(drdd.sumApprox(timeout, confidence))
 
     def sumApprox(
@@ -5186,10 +5167,7 @@ class RDD(Generic[T_co]):
         This API is experimental
         """
         rp = self._jrdd.getResourceProfile()
-        if rp is not None:
-            return ResourceProfile(_java_resource_profile=rp)
-        else:
-            return None
+        return ResourceProfile(_java_resource_profile=rp) if rp is not None else None
 
     @overload
     def toDF(

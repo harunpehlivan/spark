@@ -46,14 +46,12 @@ def _deserialize_accumulator(
 ) -> "Accumulator[T]":
     from pyspark.accumulators import _accumulatorRegistry
 
-    # If this certain accumulator was deserialized, don't overwrite it.
     if aid in _accumulatorRegistry:
         return _accumulatorRegistry[aid]
-    else:
-        accum = Accumulator(aid, zero_value, accum_param)
-        accum._deserialized = True
-        _accumulatorRegistry[aid] = accum
-        return accum
+    accum = Accumulator(aid, zero_value, accum_param)
+    accum._deserialized = True
+    _accumulatorRegistry[aid] = accum
+    return accum
 
 
 class Accumulator(Generic[T]):
@@ -249,9 +247,8 @@ class _UpdateRequestHandler(SocketServer.StreamRequestHandler):
             while not self.server.server_shutdown:  # type: ignore[attr-defined]
                 # Poll every 1 second for new data -- don't block in case of shutdown.
                 r, _, _ = select.select([self.rfile], [], [], 1)
-                if self.rfile in r:
-                    if func():
-                        break
+                if self.rfile in r and func():
+                    break
 
         def accum_updates() -> bool:
             num_updates = read_int(self.rfile)

@@ -50,8 +50,8 @@ contributors_file_name = "contributors.txt"
 
 # Prompt the user to answer yes or no until they do so
 def yesOrNoPrompt(msg):
-    response = input("%s [y/n]: " % msg)
-    while response != "y" and response != "n":
+    response = input(f"{msg} [y/n]: ")
+    while response not in ["y", "n"]:
         return yesOrNoPrompt(msg)
     return response == "y"
 
@@ -95,8 +95,8 @@ class Commit:
         return self.pr_number
 
     def __str__(self):
-        closes_pr = "(Closes #%s)" % self.pr_number if self.pr_number else ""
-        return "%s %s %s %s" % (self._hash, self.author, self.title, closes_pr)
+        closes_pr = f"(Closes #{self.pr_number})" if self.pr_number else ""
+        return f"{self._hash} {self.author} {self.title} {closes_pr}"
 
 
 # Return all commits that belong to the specified tag.
@@ -109,20 +109,13 @@ class Commit:
 #
 # This is written using Git 1.8.5.
 def get_commits(tag):
-    commit_start_marker = "|=== COMMIT START MARKER ===|"
     commit_end_marker = "|=== COMMIT END MARKER ===|"
     field_end_marker = "|=== COMMIT FIELD END MARKER ===|"
-    log_format = (
-        commit_start_marker
-        + "%h"
-        + field_end_marker
-        + "%an"
-        + field_end_marker
-        + "%s"
-        + commit_end_marker
-        + "%b"
+    commit_start_marker = "|=== COMMIT START MARKER ===|"
+    log_format = f"{commit_start_marker}%h{field_end_marker}%an{field_end_marker}%s{commit_end_marker}%b"
+    output = run_cmd(
+        ["git", "log", "--quiet", f"--pretty=format:{log_format}", tag]
     )
-    output = run_cmd(["git", "log", "--quiet", "--pretty=format:" + log_format, tag])
     commits = []
     raw_commits = [c for c in output.split(commit_start_marker) if c]
     for commit in raw_commits:
@@ -136,13 +129,14 @@ def get_commits(tag):
         # From the body, we extract the PR number and the github username
         [commit_digest, commit_body] = commit.split(commit_end_marker)
         if commit_digest.count(field_end_marker) != 2:
-            sys.exit("Unexpected format in commit: %s" % commit_digest)
+            sys.exit(f"Unexpected format in commit: {commit_digest}")
         [_hash, author, title] = commit_digest.split(field_end_marker)
         # The PR number and github username is in the commit message
         # itself and cannot be accessed through any GitHub API
         pr_number = None
-        match = re.search("Closes #([0-9]+) from ([^/\\s]+)/", commit_body)
-        if match:
+        if match := re.search(
+            "Closes #([0-9]+) from ([^/\\s]+)/", commit_body
+        ):
             [pr_number, github_username] = match.groups()
             # If the author name is not valid, use the github
             # username so we can translate it properly later
@@ -209,9 +203,8 @@ def translate_issue_type(issue_type, issue_id, warnings):
     issue_type = issue_type.lower()
     if issue_type in known_issue_types:
         return known_issue_types[issue_type]
-    else:
-        warnings.append('Unknown issue type "%s" (see %s)' % (issue_type, issue_id))
-        return issue_type
+    warnings.append(f'Unknown issue type "{issue_type}" (see {issue_id})')
+    return issue_type
 
 
 # Translate component names using a format appropriate for writing contributions
@@ -220,9 +213,8 @@ def translate_component(component, commit_hash, warnings):
     component = component.lower()
     if component in known_components:
         return known_components[component]
-    else:
-        warnings.append('Unknown component "%s" (see %s)' % (component, commit_hash))
-        return component
+    warnings.append(f'Unknown component "{component}" (see {commit_hash})')
+    return component
 
 
 # Parse components in the commit message
@@ -279,9 +271,7 @@ def get_jira_name(author, jira_client):
 
 # Return whether the given name is in the form <First Name><space><Last Name>
 def is_valid_author(author):
-    if not author:
-        return False
-    return " " in author and not re.findall("[0-9]", author)
+    return " " in author and not re.findall("[0-9]", author) if author else False
 
 
 # Capitalize the first letter of each word in the given author name

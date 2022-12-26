@@ -193,7 +193,7 @@ class RandomRDDs:
         True
         """
         return callMLlibFunc(
-            "logNormalRDD", sc._jsc, float(mean), float(std), size, numPartitions, seed
+            "logNormalRDD", sc._jsc, mean, std, size, numPartitions, seed
         )
 
     @staticmethod
@@ -241,7 +241,7 @@ class RandomRDDs:
         >>> abs(stats.stdev() - sqrt(mean)) < 0.5
         True
         """
-        return callMLlibFunc("poissonRDD", sc._jsc, float(mean), size, numPartitions, seed)
+        return callMLlibFunc("poissonRDD", sc._jsc, mean, size, numPartitions, seed)
 
     @staticmethod
     def exponentialRDD(
@@ -288,7 +288,9 @@ class RandomRDDs:
         >>> abs(stats.stdev() - sqrt(mean)) < 0.5
         True
         """
-        return callMLlibFunc("exponentialRDD", sc._jsc, float(mean), size, numPartitions, seed)
+        return callMLlibFunc(
+            "exponentialRDD", sc._jsc, mean, size, numPartitions, seed
+        )
 
     @staticmethod
     def gammaRDD(
@@ -342,7 +344,7 @@ class RandomRDDs:
         True
         """
         return callMLlibFunc(
-            "gammaRDD", sc._jsc, float(shape), float(scale), size, numPartitions, seed
+            "gammaRDD", sc._jsc, shape, scale, size, numPartitions, seed
         )
 
     @staticmethod
@@ -496,8 +498,8 @@ class RandomRDDs:
         return callMLlibFunc(
             "logNormalVectorRDD",
             sc._jsc,
-            float(mean),
-            float(std),
+            mean,
+            std,
             numRows,
             numCols,
             numPartitions,
@@ -555,7 +557,13 @@ class RandomRDDs:
         True
         """
         return callMLlibFunc(
-            "poissonVectorRDD", sc._jsc, float(mean), numRows, numCols, numPartitions, seed
+            "poissonVectorRDD",
+            sc._jsc,
+            mean,
+            numRows,
+            numCols,
+            numPartitions,
+            seed,
         )
 
     @staticmethod
@@ -609,7 +617,13 @@ class RandomRDDs:
         True
         """
         return callMLlibFunc(
-            "exponentialVectorRDD", sc._jsc, float(mean), numRows, numCols, numPartitions, seed
+            "exponentialVectorRDD",
+            sc._jsc,
+            mean,
+            numRows,
+            numCols,
+            numPartitions,
+            seed,
         )
 
     @staticmethod
@@ -670,8 +684,8 @@ class RandomRDDs:
         return callMLlibFunc(
             "gammaVectorRDD",
             sc._jsc,
-            float(shape),
-            float(scale),
+            shape,
+            scale,
             numRows,
             numCols,
             numPartitions,

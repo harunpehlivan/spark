@@ -41,12 +41,12 @@ def parse_opts():
         "--modules",
         type=str,
         default=default_value,
-        help="A comma-separated list of modules to test " "(default: %s)" % default_value,
+        help=f"A comma-separated list of modules to test (default: {default_value})",
     )
 
     args, unknown = parser.parse_known_args()
     if unknown:
-        parser.error("Unsupported arguments: %s" % " ".join(unknown))
+        parser.error(f'Unsupported arguments: {" ".join(unknown)}')
     return args
 
 
@@ -73,7 +73,7 @@ def main():
             sys.exit(1)
     elif "root" in test_modules or modules.root in changed_modules:
         print("true")
-    elif len(set(test_modules).intersection(module_names)) == 0:
+    elif not set(test_modules).intersection(module_names):
         print("false")
         if opts.fail:
             sys.exit(1)

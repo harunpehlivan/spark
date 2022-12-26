@@ -200,8 +200,8 @@ class LogisticRegressionModel(LinearClassificationModel):
         self, weights: Vector, intercept: float, numFeatures: int, numClasses: int
     ) -> None:
         super(LogisticRegressionModel, self).__init__(weights, intercept)
-        self._numFeatures = int(numFeatures)
-        self._numClasses = int(numClasses)
+        self._numFeatures = numFeatures
+        self._numClasses = numClasses
         self._threshold = 0.5
         if self._numClasses == 2:
             self._dataWithBiasSize = None
@@ -269,16 +269,16 @@ class LogisticRegressionModel(LinearClassificationModel):
             best_class = 0
             max_margin = 0.0
             if x.size + 1 == self._dataWithBiasSize:  # type: ignore[attr-defined]
-                for i in range(0, self._numClasses - 1):
+                for i in range(self._numClasses - 1):
                     margin = (
-                        x.dot(self._weightsMatrix[i][0 : x.size])  # type: ignore[attr-defined]
-                        + self._weightsMatrix[i][x.size]  # type: ignore[attr-defined]
+                        x.dot(self._weightsMatrix[i][: x.size])
+                        + self._weightsMatrix[i][x.size]
                     )
                     if margin > max_margin:
                         max_margin = margin
                         best_class = i + 1
             else:
-                for i in range(0, self._numClasses - 1):
+                for i in range(self._numClasses - 1):
                     margin = x.dot(self._weightsMatrix[i])  # type: ignore[attr-defined]
                     if margin > max_margin:
                         max_margin = margin
@@ -318,10 +318,7 @@ class LogisticRegressionModel(LinearClassificationModel):
         return model
 
     def __repr__(self) -> str:
-        return (
-            "pyspark.mllib.LogisticRegressionModel: intercept = {}, "
-            "numFeatures = {}, numClasses = {}, threshold = {}"
-        ).format(self._intercept, self._numFeatures, self._numClasses, self._threshold)
+        return f"pyspark.mllib.LogisticRegressionModel: intercept = {self._intercept}, numFeatures = {self._numFeatures}, numClasses = {self._numClasses}, threshold = {self._threshold}"
 
 
 class LogisticRegressionWithSGD:
@@ -402,15 +399,15 @@ class LogisticRegressionWithSGD:
             return callMLlibFunc(
                 "trainLogisticRegressionModelWithSGD",
                 rdd,
-                int(iterations),
-                float(step),
-                float(miniBatchFraction),
+                iterations,
+                step,
+                miniBatchFraction,
                 i,
-                float(regParam),
+                regParam,
                 regType,
-                bool(intercept),
-                bool(validateData),
-                float(convergenceTol),
+                intercept,
+                validateData,
+                convergenceTol,
             )
 
         return _regression_train_wrapper(train, LogisticRegressionModel, data, initialWeights)
@@ -504,15 +501,15 @@ class LogisticRegressionWithLBFGS:
             return callMLlibFunc(
                 "trainLogisticRegressionModelWithLBFGS",
                 rdd,
-                int(iterations),
+                iterations,
                 i,
-                float(regParam),
+                regParam,
                 regType,
-                bool(intercept),
-                int(corrections),
-                float(tolerance),
-                bool(validateData),
-                int(numClasses),
+                intercept,
+                corrections,
+                tolerance,
+                validateData,
+                numClasses,
             )
 
         if initialWeights is None:
@@ -715,15 +712,15 @@ class SVMWithSGD:
             return callMLlibFunc(
                 "trainSVMModelWithSGD",
                 rdd,
-                int(iterations),
-                float(step),
-                float(regParam),
-                float(miniBatchFraction),
+                iterations,
+                step,
+                regParam,
+                miniBatchFraction,
                 i,
                 regType,
-                bool(intercept),
-                bool(validateData),
-                float(convergenceTol),
+                intercept,
+                validateData,
+                convergenceTol,
             )
 
         return _regression_train_wrapper(train, SVMModel, data, initialWeights)

@@ -40,8 +40,8 @@ def compute(sdf: SparkDataFrame, groupKeys: List[str], method: str) -> SparkData
     `CORRELATION_CORR_OUTPUT_COLUMN` and the non-null count column
     `CORRELATION_COUNT_OUTPUT_COLUMN`, as well as the group columns.
     """
-    assert len(groupKeys) > 0
-    assert method in ["pearson", "spearman", "kendall"]
+    assert groupKeys
+    assert method in {"pearson", "spearman", "kendall"}
 
     sdf = sdf.select(
         *[F.col(key) for key in groupKeys],
@@ -62,70 +62,7 @@ def compute(sdf: SparkDataFrame, groupKeys: List[str], method: str) -> SparkData
         ],
     )
 
-    if method in ["pearson", "spearman"]:
-        # convert values to avg ranks for spearman correlation
-        if method == "spearman":
-            ROW_NUMBER_COLUMN = verify_temp_column_name(
-                sdf, "__correlation_spearman_row_number_temp_column__"
-            )
-            DENSE_RANK_COLUMN = verify_temp_column_name(
-                sdf, "__correlation_spearman_dense_rank_temp_column__"
-            )
-            window = Window.partitionBy(groupKeys)
-
-            # CORRELATION_VALUE_1_COLUMN: value -> avg rank
-            # for example:
-            # values:       3, 4, 5, 7, 7, 7, 9, 9, 10
-            # avg ranks:    1.0, 2.0, 3.0, 5.0, 5.0, 5.0, 7.5, 7.5, 9.0
-            sdf = (
-                sdf.withColumn(
-                    ROW_NUMBER_COLUMN,
-                    F.row_number().over(
-                        window.orderBy(F.asc_nulls_last(CORRELATION_VALUE_1_COLUMN))
-                    ),
-                )
-                # drop nulls but make sure each group contains at least one row
-                .where(~F.isnull(CORRELATION_VALUE_1_COLUMN) | (F.col(ROW_NUMBER_COLUMN) == 1))
-                .withColumn(
-                    DENSE_RANK_COLUMN,
-                    F.dense_rank().over(
-                        window.orderBy(F.asc_nulls_last(CORRELATION_VALUE_1_COLUMN))
-                    ),
-                )
-                .withColumn(
-                    CORRELATION_VALUE_1_COLUMN,
-                    F.when(F.isnull(CORRELATION_VALUE_1_COLUMN), F.lit(None)).otherwise(
-                        F.avg(ROW_NUMBER_COLUMN).over(
-                            window.orderBy(F.asc(DENSE_RANK_COLUMN)).rangeBetween(0, 0)
-                        )
-                    ),
-                )
-            )
-
-            # CORRELATION_VALUE_2_COLUMN: value -> avg rank
-            sdf = (
-                sdf.withColumn(
-                    ROW_NUMBER_COLUMN,
-                    F.row_number().over(
-                        window.orderBy(F.asc_nulls_last(CORRELATION_VALUE_2_COLUMN))
-                    ),
-                )
-                .withColumn(
-                    DENSE_RANK_COLUMN,
-                    F.dense_rank().over(
-                        window.orderBy(F.asc_nulls_last(CORRELATION_VALUE_2_COLUMN))
-                    ),
-                )
-                .withColumn(
-                    CORRELATION_VALUE_2_COLUMN,
-                    F.when(F.isnull(CORRELATION_VALUE_2_COLUMN), F.lit(None)).otherwise(
-                        F.avg(ROW_NUMBER_COLUMN).over(
-                            window.orderBy(F.asc(DENSE_RANK_COLUMN)).rangeBetween(0, 0)
-                        )
-                    ),
-                )
-            )
-
+    if method == "pearson":
         sdf = sdf.groupby(groupKeys).agg(
             F.corr(CORRELATION_VALUE_1_COLUMN, CORRELATION_VALUE_2_COLUMN).alias(
                 CORRELATION_CORR_OUTPUT_COLUMN
@@ -138,7 +75,79 @@ def compute(sdf: SparkDataFrame, groupKeys: List[str], method: str) -> SparkData
             ).alias(CORRELATION_COUNT_OUTPUT_COLUMN),
         )
 
-        return sdf
+    elif method == "spearman":
+        ROW_NUMBER_COLUMN = verify_temp_column_name(
+            sdf, "__correlation_spearman_row_number_temp_column__"
+        )
+        DENSE_RANK_COLUMN = verify_temp_column_name(
+            sdf, "__correlation_spearman_dense_rank_temp_column__"
+        )
+        window = Window.partitionBy(groupKeys)
+
+        # CORRELATION_VALUE_1_COLUMN: value -> avg rank
+        # for example:
+        # values:       3, 4, 5, 7, 7, 7, 9, 9, 10
+        # avg ranks:    1.0, 2.0, 3.0, 5.0, 5.0, 5.0, 7.5, 7.5, 9.0
+        sdf = (
+            sdf.withColumn(
+                ROW_NUMBER_COLUMN,
+                F.row_number().over(
+                    window.orderBy(F.asc_nulls_last(CORRELATION_VALUE_1_COLUMN))
+                ),
+            )
+            # drop nulls but make sure each group contains at least one row
+            .where(~F.isnull(CORRELATION_VALUE_1_COLUMN) | (F.col(ROW_NUMBER_COLUMN) == 1))
+            .withColumn(
+                DENSE_RANK_COLUMN,
+                F.dense_rank().over(
+                    window.orderBy(F.asc_nulls_last(CORRELATION_VALUE_1_COLUMN))
+                ),
+            )
+            .withColumn(
+                CORRELATION_VALUE_1_COLUMN,
+                F.when(F.isnull(CORRELATION_VALUE_1_COLUMN), F.lit(None)).otherwise(
+                    F.avg(ROW_NUMBER_COLUMN).over(
+                        window.orderBy(F.asc(DENSE_RANK_COLUMN)).rangeBetween(0, 0)
+                    )
+                ),
+            )
+        )
+
+        # CORRELATION_VALUE_2_COLUMN: value -> avg rank
+        sdf = (
+            sdf.withColumn(
+                ROW_NUMBER_COLUMN,
+                F.row_number().over(
+                    window.orderBy(F.asc_nulls_last(CORRELATION_VALUE_2_COLUMN))
+                ),
+            )
+            .withColumn(
+                DENSE_RANK_COLUMN,
+                F.dense_rank().over(
+                    window.orderBy(F.asc_nulls_last(CORRELATION_VALUE_2_COLUMN))
+                ),
+            )
+            .withColumn(
+                CORRELATION_VALUE_2_COLUMN,
+                F.when(F.isnull(CORRELATION_VALUE_2_COLUMN), F.lit(None)).otherwise(
+                    F.avg(ROW_NUMBER_COLUMN).over(
+                        window.orderBy(F.asc(DENSE_RANK_COLUMN)).rangeBetween(0, 0)
+                    )
+                ),
+            )
+        )
+
+        sdf = sdf.groupby(groupKeys).agg(
+            F.corr(CORRELATION_VALUE_1_COLUMN, CORRELATION_VALUE_2_COLUMN).alias(
+                CORRELATION_CORR_OUTPUT_COLUMN
+            ),
+            F.count(
+                F.when(
+                    ~F.isnull(CORRELATION_VALUE_1_COLUMN),
+                    1,
+                )
+            ).alias(CORRELATION_COUNT_OUTPUT_COLUMN),
+        )
 
     else:
         # kendall correlation
@@ -259,4 +268,4 @@ def compute(sdf: SparkDataFrame, groupKeys: List[str], method: str) -> SparkData
             *[F.col(key) for key in groupKeys],
             *[CORRELATION_CORR_OUTPUT_COLUMN, CORRELATION_COUNT_OUTPUT_COLUMN],
         )
-        return sdf
+    return sdf

@@ -55,7 +55,9 @@ while not tag_exists(PREVIOUS_RELEASE_TAG):
 # Gather commits found in the new tag but not in the old tag.
 # This filters commits based on both the git hash and the PR number.
 # If either is present in the old tag, then we ignore the commit.
-print("Gathering new commits between tags %s and %s" % (PREVIOUS_RELEASE_TAG, RELEASE_TAG))
+print(
+    f"Gathering new commits between tags {PREVIOUS_RELEASE_TAG} and {RELEASE_TAG}"
+)
 release_commits = get_commits(RELEASE_TAG)
 previous_release_commits = get_commits(PREVIOUS_RELEASE_TAG)
 previous_release_hashes = set()
@@ -74,20 +76,22 @@ for this_commit in release_commits:
         continue
     new_commits.append(this_commit)
 if not new_commits:
-    sys.exit("There are no new commits between %s and %s!" % (PREVIOUS_RELEASE_TAG, RELEASE_TAG))
+    sys.exit(
+        f"There are no new commits between {PREVIOUS_RELEASE_TAG} and {RELEASE_TAG}!"
+    )
 
 # Prompt the user for confirmation that the commit range is correct
 print("\n==================================================================================")
-print("JIRA server: %s" % JIRA_API_BASE)
-print("Release tag: %s" % RELEASE_TAG)
-print("Previous release tag: %s" % PREVIOUS_RELEASE_TAG)
-print("Number of commits in this range: %s" % len(new_commits))
+print(f"JIRA server: {JIRA_API_BASE}")
+print(f"Release tag: {RELEASE_TAG}")
+print(f"Previous release tag: {PREVIOUS_RELEASE_TAG}")
+print(f"Number of commits in this range: {len(new_commits)}")
 print("")
 
 
 def print_indented(_list):
     for x in _list:
-        print("  %s" % x)
+        print(f"  {x}")
 
 
 if yesOrNoPrompt("Show all commits?"):
@@ -248,45 +252,39 @@ for commit in filtered_commits:
     print("  Processed commit %s authored by %s on %s" % (_hash, author, date))
 print("==================================================================================\n")
 
-# Write to contributors file ordered by author names
-# Each line takes the format " * Author name -- semi-colon delimited contributions"
-# e.g. * Andrew Or -- Bug fixes in Windows, Core, and Web UI; improvements in Core
-# e.g. * Tathagata Das -- Bug fixes and new features in Streaming
-contributors_file = open(contributors_file_name, "w")
-authors = list(author_info.keys())
-authors.sort()
-for author in authors:
-    contribution = ""
-    components = set()
-    issue_types = set()
-    for issue_type, comps in author_info[author].items():
-        components.update(comps)
-        issue_types.add(issue_type)
-    # If there is only one component, mention it only once
-    # e.g. Bug fixes, improvements in MLlib
-    if len(components) == 1:
-        contribution = "%s in %s" % (nice_join(issue_types), next(iter(components)))
-    # Otherwise, group contributions by issue types instead of modules
-    # e.g. Bug fixes in MLlib, Core, and Streaming; documentation in YARN
-    else:
-        contributions = [
-            "%s in %s" % (issue_type, nice_join(comps))
-            for issue_type, comps in author_info[author].items()
-        ]
-        contribution = "; ".join(contributions)
-    # Do not use python's capitalize() on the whole string to preserve case
-    assert contribution
-    contribution = contribution[0].capitalize() + contribution[1:]
-    # If the author name is invalid, use an intermediate format that
-    # can be translated through translate-contributors.py later
-    # E.g. andrewor14/SPARK-3425/SPARK-1157/SPARK-6672
-    if author in invalid_authors and invalid_authors[author]:
-        author = author + "/" + "/".join(invalid_authors[author])
-    # line = " * %s -- %s" % (author, contribution)
-    line = author
-    contributors_file.write(line + "\n")
-contributors_file.close()
-print("Contributors list is successfully written to %s!" % contributors_file_name)
+with open(contributors_file_name, "w") as contributors_file:
+    authors = sorted(author_info.keys())
+    for author in authors:
+        contribution = ""
+        components = set()
+        issue_types = set()
+        for issue_type, comps in author_info[author].items():
+            components.update(comps)
+            issue_types.add(issue_type)
+            # If there is only one component, mention it only once
+            # e.g. Bug fixes, improvements in MLlib
+        if len(components) == 1:
+            contribution = f"{nice_join(issue_types)} in {next(iter(components))}"
+        else:
+            contributions = [
+                f"{issue_type} in {nice_join(comps)}"
+                for issue_type, comps in author_info[author].items()
+            ]
+            contribution = "; ".join(contributions)
+        # Do not use python's capitalize() on the whole string to preserve case
+        assert contribution
+        contribution = contribution[0].capitalize() + contribution[1:]
+            # If the author name is invalid, use an intermediate format that
+            # can be translated through translate-contributors.py later
+            # E.g. andrewor14/SPARK-3425/SPARK-1157/SPARK-6672
+        if author in invalid_authors and invalid_authors[author]:
+            author = f"{author}/" + "/".join(invalid_authors[author])
+        # line = " * %s -- %s" % (author, contribution)
+        line = author
+        contributors_file.write(line + "\n")
+print(
+    f"Contributors list is successfully written to {contributors_file_name}!"
+)
 
 # Prompt the user to translate author names if necessary
 if invalid_authors:
@@ -300,5 +298,7 @@ if warnings:
     print("\n============ Warnings encountered while creating the contributor list ============")
     for w in warnings:
         print(w)
-    print("Please correct these in the final contributors list at %s." % contributors_file_name)
+    print(
+        f"Please correct these in the final contributors list at {contributors_file_name}."
+    )
     print("==================================================================================\n")

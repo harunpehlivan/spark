@@ -20,6 +20,7 @@ An example demonstrating Logistic Regression Summary.
 Run with:
   bin/spark-submit examples/src/main/python/ml/logistic_regression_summary_example.py
 """
+
 # $example on$
 from pyspark.ml.classification import LogisticRegression
 # $example off$
@@ -52,7 +53,7 @@ if __name__ == "__main__":
 
     # Obtain the receiver-operating characteristic as a dataframe and areaUnderROC.
     trainingSummary.roc.show()
-    print("areaUnderROC: " + str(trainingSummary.areaUnderROC))
+    print(f"areaUnderROC: {str(trainingSummary.areaUnderROC)}")
 
     # Set the model threshold to maximize F-Measure
     fMeasure = trainingSummary.fMeasureByThreshold

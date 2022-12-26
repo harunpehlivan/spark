@@ -883,7 +883,7 @@ class LinearSVCModel(
             return LinearSVCTrainingSummary(super(LinearSVCModel, self).summary)
         else:
             raise RuntimeError(
-                "No training summary available for this %s" % self.__class__.__name__
+                f"No training summary available for this {self.__class__.__name__}"
             )
 
     def evaluate(self, dataset: DataFrame) -> "LinearSVCSummary":
@@ -898,7 +898,7 @@ class LinearSVCModel(
             Test dataset to evaluate model on.
         """
         if not isinstance(dataset, DataFrame):
-            raise TypeError("dataset must be a DataFrame but got %s." % type(dataset))
+            raise TypeError(f"dataset must be a DataFrame but got {type(dataset)}.")
         java_lsvc_summary = self._call_java("evaluate", dataset)
         return LinearSVCSummary(java_lsvc_summary)
 
@@ -1031,17 +1031,16 @@ class _LogisticRegressionParams(
         Otherwise, returns :py:attr:`threshold` if set or its default value if unset.
         """
         self._checkThresholdConsistency()
-        if self.isSet(self.thresholds):
-            ts = self.getOrDefault(self.thresholds)
-            if len(ts) != 2:
-                raise ValueError(
-                    "Logistic Regression getThreshold only applies to"
-                    + " binary classification, but thresholds has length != 2."
-                    + "  thresholds: {ts}".format(ts=ts)
-                )
-            return 1.0 / (1.0 + ts[0] / ts[1])
-        else:
+        if not self.isSet(self.thresholds):
             return self.getOrDefault(self.threshold)
+        ts = self.getOrDefault(self.thresholds)
+        if len(ts) != 2:
+            raise ValueError(
+                "Logistic Regression getThreshold only applies to"
+                + " binary classification, but thresholds has length != 2."
+                + "  thresholds: {ts}".format(ts=ts)
+            )
+        return 1.0 / (1.0 + ts[0] / ts[1])
 
     @since("1.5.0")
     def setThresholds(self: "P", value: List[float]) -> "P":
@@ -1062,11 +1061,10 @@ class _LogisticRegressionParams(
         If neither are set, throw an error.
         """
         self._checkThresholdConsistency()
-        if not self.isSet(self.thresholds) and self.isSet(self.threshold):
-            t = self.getOrDefault(self.threshold)
-            return [1.0 - t, t]
-        else:
+        if self.isSet(self.thresholds) or not self.isSet(self.threshold):
             return self.getOrDefault(self.thresholds)
+        t = self.getOrDefault(self.threshold)
+        return [1.0 - t, t]
 
     def _checkThresholdConsistency(self) -> None:
         if self.isSet(self.threshold) and self.isSet(self.thresholds):
@@ -1568,18 +1566,17 @@ class LogisticRegressionModel(
         Gets summary (accuracy/precision/recall, objective history, total iterations) of model
         trained on the training set. An exception is thrown if `trainingSummary is None`.
         """
-        if self.hasSummary:
-            if self.numClasses <= 2:
-                return BinaryLogisticRegressionTrainingSummary(
-                    super(LogisticRegressionModel, self).summary
-                )
-            else:
-                return LogisticRegressionTrainingSummary(
-                    super(LogisticRegressionModel, self).summary
-                )
-        else:
+        if not self.hasSummary:
             raise RuntimeError(
-                "No training summary available for this %s" % self.__class__.__name__
+                f"No training summary available for this {self.__class__.__name__}"
+            )
+        if self.numClasses <= 2:
+            return BinaryLogisticRegressionTrainingSummary(
+                super(LogisticRegressionModel, self).summary
+            )
+        else:
+            return LogisticRegressionTrainingSummary(
+                super(LogisticRegressionModel, self).summary
             )
 
     def evaluate(self, dataset: DataFrame) -> "LogisticRegressionSummary":
@@ -1594,7 +1591,7 @@ class LogisticRegressionModel(
             Test dataset to evaluate model on.
         """
         if not isinstance(dataset, DataFrame):
-            raise TypeError("dataset must be a DataFrame but got %s." % type(dataset))
+            raise TypeError(f"dataset must be a DataFrame but got {type(dataset)}.")
         java_blr_summary = self._call_java("evaluate", dataset)
         if self.numClasses <= 2:
             return BinaryLogisticRegressionSummary(java_blr_summary)
@@ -2292,18 +2289,17 @@ class RandomForestClassificationModel(
         Gets summary (accuracy/precision/recall, objective history, total iterations) of model
         trained on the training set. An exception is thrown if `trainingSummary is None`.
         """
-        if self.hasSummary:
-            if self.numClasses <= 2:
-                return BinaryRandomForestClassificationTrainingSummary(
-                    super(RandomForestClassificationModel, self).summary
-                )
-            else:
-                return RandomForestClassificationTrainingSummary(
-                    super(RandomForestClassificationModel, self).summary
-                )
-        else:
+        if not self.hasSummary:
             raise RuntimeError(
-                "No training summary available for this %s" % self.__class__.__name__
+                f"No training summary available for this {self.__class__.__name__}"
+            )
+        if self.numClasses <= 2:
+            return BinaryRandomForestClassificationTrainingSummary(
+                super(RandomForestClassificationModel, self).summary
+            )
+        else:
+            return RandomForestClassificationTrainingSummary(
+                super(RandomForestClassificationModel, self).summary
             )
 
     def evaluate(
@@ -2320,7 +2316,7 @@ class RandomForestClassificationModel(
             Test dataset to evaluate model on.
         """
         if not isinstance(dataset, DataFrame):
-            raise TypeError("dataset must be a DataFrame but got %s." % type(dataset))
+            raise TypeError(f"dataset must be a DataFrame but got {type(dataset)}.")
         java_rf_summary = self._call_java("evaluate", dataset)
         if self.numClasses <= 2:
             return BinaryRandomForestClassificationSummary(java_rf_summary)
@@ -3331,7 +3327,7 @@ class MultilayerPerceptronClassificationModel(
             )
         else:
             raise RuntimeError(
-                "No training summary available for this %s" % self.__class__.__name__
+                f"No training summary available for this {self.__class__.__name__}"
             )
 
     def evaluate(self, dataset: DataFrame) -> "MultilayerPerceptronClassificationSummary":
@@ -3346,7 +3342,7 @@ class MultilayerPerceptronClassificationModel(
             Test dataset to evaluate model on.
         """
         if not isinstance(dataset, DataFrame):
-            raise TypeError("dataset must be a DataFrame but got %s." % type(dataset))
+            raise TypeError(f"dataset must be a DataFrame but got {type(dataset)}.")
         java_mlp_summary = self._call_java("evaluate", dataset)
         return MultilayerPerceptronClassificationSummary(java_mlp_summary)
 
@@ -3542,7 +3538,12 @@ class OneVsRest(
         classifier = self.getClassifier()
 
         numClasses = (
-            int(cast(Row, dataset.agg({labelCol: "max"}).head())["max(" + labelCol + ")"]) + 1
+            int(
+                cast(Row, dataset.agg({labelCol: "max"}).head())[
+                    f"max({labelCol})"
+                ]
+            )
+            + 1
         )
 
         weightCol = None
@@ -3565,7 +3566,7 @@ class OneVsRest(
             multiclassLabeled.persist(StorageLevel.MEMORY_AND_DISK)
 
         def trainSingleClass(index: int) -> CM:
-            binaryLabelCol = "mc2b$" + str(index)
+            binaryLabelCol = f"mc2b${index}"
             trainingDataset = multiclassLabeled.withColumn(
                 binaryLabelCol,
                 when(multiclassLabeled[labelCol] == float(index), 1.0).otherwise(0.0),
@@ -3609,7 +3610,7 @@ class OneVsRest(
             Copy of this instance
         """
         if extra is None:
-            extra = dict()
+            extra = {}
         newOvr = Params.copy(self, extra)
         if self.isSet(self.classifier):
             newOvr.setClassifier(self.getClassifier().copy(extra))
@@ -3718,11 +3719,10 @@ class OneVsRestReader(MLReader[OneVsRest]):
         metadata = DefaultParamsReader.loadMetadata(path, self.sc)
         if not DefaultParamsReader.isPythonParamsInstance(metadata):
             return JavaMLReader(self.cls).load(path)  # type: ignore[arg-type]
-        else:
-            classifier = cast(Classifier, _OneVsRestSharedReadWrite.loadClassifier(path, self.sc))
-            ova: OneVsRest = OneVsRest(classifier=classifier)._resetUid(metadata["uid"])
-            DefaultParamsReader.getAndSetParams(ova, metadata, skipParams=["classifier"])
-            return ova
+        classifier = cast(Classifier, _OneVsRestSharedReadWrite.loadClassifier(path, self.sc))
+        ova: OneVsRest = OneVsRest(classifier=classifier)._resetUid(metadata["uid"])
+        DefaultParamsReader.getAndSetParams(ova, metadata, skipParams=["classifier"])
+        return ova
 
 
 @inherit_doc
@@ -3796,7 +3796,7 @@ class OneVsRestModel(
         origCols = dataset.columns
 
         # add an accumulator column to store predictions of all the models
-        accColName = "mbc$acc" + str(uuid.uuid4())
+        accColName = f"mbc$acc{str(uuid.uuid4())}"
         initUDF = udf(lambda _: [], ArrayType(DoubleType()))
         newDataset = dataset.withColumn(accColName, initUDF(dataset[origCols[0]]))
 
@@ -3813,7 +3813,7 @@ class OneVsRestModel(
             columns = origCols + [rawPredictionCol, accColName]
 
             # add temporary column to store intermediate scores and update
-            tmpColName = "mbc$tmp" + str(uuid.uuid4())
+            tmpColName = f"mbc$tmp{str(uuid.uuid4())}"
             updateUDF = udf(
                 lambda predictions, prediction: predictions + [prediction.tolist()[1]],
                 ArrayType(DoubleType()),
@@ -3878,7 +3878,7 @@ class OneVsRestModel(
             Copy of this instance
         """
         if extra is None:
-            extra = dict()
+            extra = {}
         newModel = Params.copy(self, extra)
         newModel.models = [model.copy(extra) for model in self.models]
         return newModel
@@ -3961,19 +3961,18 @@ class OneVsRestModelReader(MLReader[OneVsRestModel]):
         metadata = DefaultParamsReader.loadMetadata(path, self.sc)
         if not DefaultParamsReader.isPythonParamsInstance(metadata):
             return JavaMLReader(self.cls).load(path)  # type: ignore[arg-type]
-        else:
-            classifier = _OneVsRestSharedReadWrite.loadClassifier(path, self.sc)
-            numClasses = metadata["numClasses"]
-            subModels = [None] * numClasses
-            for idx in range(numClasses):
-                subModelPath = os.path.join(path, f"model_{idx}")
-                subModels[idx] = DefaultParamsReader.loadParamsInstance(subModelPath, self.sc)
-            ovaModel = OneVsRestModel(cast(List[ClassificationModel], subModels))._resetUid(
-                metadata["uid"]
-            )
-            ovaModel.set(ovaModel.classifier, classifier)
-            DefaultParamsReader.getAndSetParams(ovaModel, metadata, skipParams=["classifier"])
-            return ovaModel
+        classifier = _OneVsRestSharedReadWrite.loadClassifier(path, self.sc)
+        numClasses = metadata["numClasses"]
+        subModels = [None] * numClasses
+        for idx in range(numClasses):
+            subModelPath = os.path.join(path, f"model_{idx}")
+            subModels[idx] = DefaultParamsReader.loadParamsInstance(subModelPath, self.sc)
+        ovaModel = OneVsRestModel(cast(List[ClassificationModel], subModels))._resetUid(
+            metadata["uid"]
+        )
+        ovaModel.set(ovaModel.classifier, classifier)
+        DefaultParamsReader.getAndSetParams(ovaModel, metadata, skipParams=["classifier"])
+        return ovaModel
 
 
 @inherit_doc
@@ -4261,7 +4260,7 @@ class FMClassificationModel(
             return FMClassificationTrainingSummary(super(FMClassificationModel, self).summary)
         else:
             raise RuntimeError(
-                "No training summary available for this %s" % self.__class__.__name__
+                f"No training summary available for this {self.__class__.__name__}"
             )
 
     def evaluate(self, dataset: DataFrame) -> "FMClassificationSummary":
@@ -4276,7 +4275,7 @@ class FMClassificationModel(
             Test dataset to evaluate model on.
         """
         if not isinstance(dataset, DataFrame):
-            raise TypeError("dataset must be a DataFrame but got %s." % type(dataset))
+            raise TypeError(f"dataset must be a DataFrame but got {type(dataset)}.")
         java_fm_summary = self._call_java("evaluate", dataset)
         return FMClassificationSummary(java_fm_summary)
 

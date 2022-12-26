@@ -108,12 +108,12 @@ class HashingTFTest(MLlibTestCase):
             n,
             {hashingTF.indexOf("a"): 1.0, hashingTF.indexOf("b"): 1.0, hashingTF.indexOf("c"): 1.0},
         ).toArray()
-        for i in range(0, n):
+        for i in range(n):
             self.assertAlmostEqual(
                 output[i],
                 expected[i],
                 14,
-                "Error at " + str(i) + ": expected " + str(expected[i]) + ", got " + str(output[i]),
+                f"Error at {str(i)}: expected {str(expected[i])}, got {str(output[i])}",
             )
 
 

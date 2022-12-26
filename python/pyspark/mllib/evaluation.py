@@ -329,14 +329,14 @@ class MulticlassMetrics(JavaModelWrapper):
         """
         Returns precision.
         """
-        return self.call("precision", float(label))
+        return self.call("precision", label)
 
     @since("1.4.0")
     def recall(self, label: float) -> float:
         """
         Returns recall.
         """
-        return self.call("recall", float(label))
+        return self.call("recall", label)
 
     @since("1.4.0")
     def fMeasure(self, label: float, beta: Optional[float] = None) -> float:
@@ -480,7 +480,7 @@ class RankingMetrics(JavaModelWrapper, Generic[T]):
         If a query has an empty ground truth set, zero will be used as precision together
         with a log warning.
         """
-        return self.call("precisionAt", int(k))
+        return self.call("precisionAt", k)
 
     @property  # type: ignore[misc]
     @since("1.4.0")
@@ -499,7 +499,7 @@ class RankingMetrics(JavaModelWrapper, Generic[T]):
         If a query has an empty ground truth set, the average precision will be zero and
         a log warning is generated.
         """
-        return self.call("meanAveragePrecisionAt", int(k))
+        return self.call("meanAveragePrecisionAt", k)
 
     @since("1.4.0")
     def ndcgAt(self, k: int) -> float:
@@ -512,7 +512,7 @@ class RankingMetrics(JavaModelWrapper, Generic[T]):
         If a query has an empty ground truth set, zero will be used as NDCG together with
         a log warning.
         """
-        return self.call("ndcgAt", int(k))
+        return self.call("ndcgAt", k)
 
     @since("3.0.0")
     def recallAt(self, k: int) -> float:
@@ -526,7 +526,7 @@ class RankingMetrics(JavaModelWrapper, Generic[T]):
         If a query has an empty ground truth set, zero will be used as recall together
         with a log warning.
         """
-        return self.call("recallAt", int(k))
+        return self.call("recallAt", k)
 
 
 class MultilabelMetrics(JavaModelWrapper):

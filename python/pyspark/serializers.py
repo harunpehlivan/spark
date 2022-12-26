@@ -129,7 +129,7 @@ class Serializer:
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "%s()" % self.__class__.__name__
+        return f"{self.__class__.__name__}()"
 
     def __hash__(self):
         return hash(str(self))
@@ -286,7 +286,7 @@ class AutoBatchedSerializer(BatchedSerializer):
                 batch //= 2
 
     def __repr__(self):
-        return "AutoBatchedSerializer(%s)" % self.serializer
+        return f"AutoBatchedSerializer({self.serializer})"
 
 
 class CartesianDeserializer(Serializer):
@@ -312,7 +312,7 @@ class CartesianDeserializer(Serializer):
         return chain.from_iterable(self._load_stream_without_unbatching(stream))
 
     def __repr__(self):
-        return "CartesianDeserializer(%s, %s)" % (str(self.key_ser), str(self.val_ser))
+        return f"CartesianDeserializer({str(self.key_ser)}, {str(self.val_ser)})"
 
 
 class PairDeserializer(Serializer):
@@ -347,7 +347,7 @@ class PairDeserializer(Serializer):
         return chain.from_iterable(self._load_stream_without_unbatching(stream))
 
     def __repr__(self):
-        return "PairDeserializer(%s, %s)" % (str(self.key_ser), str(self.val_ser))
+        return f"PairDeserializer({str(self.key_ser)}, {str(self.val_ser)})"
 
 
 class NoOpSerializer(FramedSerializer):
@@ -462,9 +462,9 @@ class CloudPickleSerializer(FramedSerializer):
         except Exception as e:
             emsg = str(e)
             if "'i' format requires" in emsg:
-                msg = "Object too large to serialize: %s" % emsg
+                msg = f"Object too large to serialize: {emsg}"
             else:
-                msg = "Could not serialize object: %s: %s" % (e.__class__.__name__, emsg)
+                msg = f"Could not serialize object: {e.__class__.__name__}: {emsg}"
             print_exec(sys.stderr)
             raise pickle.PicklingError(msg)
 
@@ -521,7 +521,7 @@ class AutoSerializer(FramedSerializer):
         elif _type == b"P":
             return pickle.loads(obj[1:])
         else:
-            raise ValueError("invalid serialization type: %s" % _type)
+            raise ValueError(f"invalid serialization type: {_type}")
 
 
 class CompressedSerializer(FramedSerializer):
@@ -541,7 +541,7 @@ class CompressedSerializer(FramedSerializer):
         return self.serializer.loads(zlib.decompress(obj))
 
     def __repr__(self):
-        return "CompressedSerializer(%s)" % self.serializer
+        return f"CompressedSerializer({self.serializer})"
 
 
 class UTF8Deserializer(Serializer):
@@ -572,14 +572,14 @@ class UTF8Deserializer(Serializer):
             return
 
     def __repr__(self):
-        return "UTF8Deserializer(%s)" % self.use_unicode
+        return f"UTF8Deserializer({self.use_unicode})"
 
 
 def read_long(stream):
-    length = stream.read(8)
-    if not length:
+    if length := stream.read(8):
+        return struct.unpack("!q", length)[0]
+    else:
         raise EOFError
-    return struct.unpack("!q", length)[0]
 
 
 def write_long(value, stream):
@@ -591,10 +591,10 @@ def pack_long(value):
 
 
 def read_int(stream):
-    length = stream.read(4)
-    if not length:
+    if length := stream.read(4):
+        return struct.unpack("!i", length)[0]
+    else:
         raise EOFError
-    return struct.unpack("!i", length)[0]
 
 
 def write_int(value, stream):
@@ -602,10 +602,10 @@ def write_int(value, stream):
 
 
 def read_bool(stream):
-    length = stream.read(1)
-    if not length:
+    if length := stream.read(1):
+        return struct.unpack("!?", length)[0]
+    else:
         raise EOFError
-    return struct.unpack("!?", length)[0]
 
 
 def write_with_length(obj, stream):

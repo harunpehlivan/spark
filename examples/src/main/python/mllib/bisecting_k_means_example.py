@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     # Evaluate clustering
     cost = model.computeCost(parsedData)
-    print("Bisecting K-means Cost = " + str(cost))
+    print(f"Bisecting K-means Cost = {str(cost)}")
     # $example off$
 
     sc.stop()

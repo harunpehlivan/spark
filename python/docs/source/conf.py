@@ -25,21 +25,21 @@ sys.path.insert(0, os.path.abspath('.'))
 # generate user_guide/pandas_on_spark/supported_pandas_api.rst
 from pyspark.pandas.supported_api_gen import generate_supported_api
 
-output_rst_file_path = (
-    "%s/user_guide/pandas_on_spark/supported_pandas_api.rst"
-    % os.path.dirname(os.path.abspath(__file__))
-)
+output_rst_file_path = f"{os.path.dirname(os.path.abspath(__file__))}/user_guide/pandas_on_spark/supported_pandas_api.rst"
 generate_supported_api(output_rst_file_path)
 
 # Remove previously generated rst files. Ignore errors just in case it stops
 # generating whole docs.
 shutil.rmtree(
-    "%s/reference/api" % os.path.dirname(os.path.abspath(__file__)), ignore_errors=True)
+    f"{os.path.dirname(os.path.abspath(__file__))}/reference/api",
+    ignore_errors=True,
+)
 shutil.rmtree(
-    "%s/reference/pyspark.pandas/api" % os.path.dirname(os.path.abspath(__file__)),
-    ignore_errors=True)
+    f"{os.path.dirname(os.path.abspath(__file__))}/reference/pyspark.pandas/api",
+    ignore_errors=True,
+)
 try:
-    os.mkdir("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)))
+    os.mkdir(f"{os.path.dirname(os.path.abspath(__file__))}/reference/api")
 except OSError as e:
     if e.errno != errno.EEXIST:
         raise

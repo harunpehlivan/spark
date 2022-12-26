@@ -35,7 +35,7 @@ def checked_package_name(spark_version, hadoop_version, hive_version):
     """
     Check the generated package name, here we need to use the final hadoop version.
     """
-    return "%s-bin-%s" % (spark_version, hadoop_version)
+    return f"{spark_version}-bin-{hadoop_version}"
 
 
 def checked_versions(spark_version, hadoop_version, hive_version):
@@ -60,16 +60,16 @@ def checked_versions(spark_version, hadoop_version, hive_version):
         For example, spark-3.2.0, hadoop3 and hive2.3.
     """
     if re.match("^[0-9]+\\.[0-9]+\\.[0-9]+$", spark_version):
-        spark_version = "spark-%s" % spark_version
+        spark_version = f"spark-{spark_version}"
     if not spark_version.startswith("spark-"):
         raise RuntimeError(
-            "Spark version should start with 'spark-' prefix; however, " "got %s" % spark_version
+            f"Spark version should start with 'spark-' prefix; however, got {spark_version}"
         )
 
     if hadoop_version == "without":
         hadoop_version = "without-hadoop"
     elif re.match("^[0-9]+$", hadoop_version):
-        hadoop_version = "hadoop%s" % hadoop_version
+        hadoop_version = f"hadoop{hadoop_version}"
 
     if hadoop_version not in SUPPORTED_HADOOP_VERSIONS:
         raise RuntimeError(
@@ -78,7 +78,7 @@ def checked_versions(spark_version, hadoop_version, hive_version):
         )
 
     if re.match("^[0-9]+\\.[0-9]+$", hive_version):
-        hive_version = "hive%s" % hive_version
+        hive_version = f"hive{hive_version}"
 
     if hive_version not in SUPPORTED_HIVE_VERSIONS:
         raise RuntimeError(
@@ -90,17 +90,17 @@ def checked_versions(spark_version, hadoop_version, hive_version):
 
 
 def convert_old_hadoop_version(spark_version, hadoop_version):
-    # check if Spark version <= 3.2, if so, convert hadoop3 to hadoop3.2 and hadoop2 to hadoop2.7
-    version_dict = {
-        "hadoop3": "hadoop3.2",
-        "hadoop2": "hadoop2.7",
-        "without": "without",
-        "without-hadoop": "without-hadoop",
-    }
     spark_version_parts = re.search("^spark-([0-9]+)\\.([0-9]+)\\.[0-9]+$", spark_version)
-    spark_major_version = int(spark_version_parts.group(1))
-    spark_minor_version = int(spark_version_parts.group(2))
+    spark_major_version = int(spark_version_parts[1])
+    spark_minor_version = int(spark_version_parts[2])
     if spark_major_version < 3 or (spark_major_version == 3 and spark_minor_version <= 2):
+        # check if Spark version <= 3.2, if so, convert hadoop3 to hadoop3.2 and hadoop2 to hadoop2.7
+        version_dict = {
+            "hadoop3": "hadoop3.2",
+            "hadoop2": "hadoop2.7",
+            "without": "without",
+            "without-hadoop": "without-hadoop",
+        }
         hadoop_version = version_dict[hadoop_version]
     return hadoop_version
 
@@ -124,28 +124,25 @@ def install_spark(dest, spark_version, hadoop_version, hive_version):
     """
 
     package_name = checked_package_name(spark_version, hadoop_version, hive_version)
-    package_local_path = os.path.join(dest, "%s.tgz" % package_name)
+    package_local_path = os.path.join(dest, f"{package_name}.tgz")
     if "PYSPARK_RELEASE_MIRROR" in os.environ:
         sites = [os.environ["PYSPARK_RELEASE_MIRROR"]]
     else:
         sites = get_preferred_mirrors()
-    print("Trying to download Spark %s from [%s]" % (spark_version, ", ".join(sites)))
+    print(f'Trying to download Spark {spark_version} from [{", ".join(sites)}]')
 
-    pretty_pkg_name = "%s for Hadoop %s" % (
-        spark_version,
-        "Free build" if hadoop_version == "without" else hadoop_version,
-    )
+    pretty_pkg_name = f'{spark_version} for Hadoop {"Free build" if hadoop_version == "without" else hadoop_version}'
 
     for site in sites:
         os.makedirs(dest, exist_ok=True)
-        url = "%s/spark/%s/%s.tgz" % (site, spark_version, package_name)
+        url = f"{site}/spark/{spark_version}/{package_name}.tgz"
 
         tar = None
         try:
             print("Downloading %s from:\n- %s" % (pretty_pkg_name, url))
             download_to_file(urllib.request.urlopen(url), package_local_path)
 
-            print("Installing to %s" % dest)
+            print(f"Installing to {dest}")
             tar = tarfile.open(package_local_path, "r:gz")
             for member in tar.getmembers():
                 if member.name == package_name:
@@ -155,7 +152,7 @@ def install_spark(dest, spark_version, hadoop_version, hive_version):
                 tar.extract(member, dest)
             return
         except Exception:
-            print("Failed to download %s from %s:" % (pretty_pkg_name, url))
+            print(f"Failed to download {pretty_pkg_name} from {url}:")
             traceback.print_exc()
             rmtree(dest, ignore_errors=True)
         finally:
@@ -163,7 +160,7 @@ def install_spark(dest, spark_version, hadoop_version, hive_version):
                 tar.close()
             if os.path.exists(package_local_path):
                 os.remove(package_local_path)
-    raise IOError("Unable to download %s." % pretty_pkg_name)
+    raise IOError(f"Unable to download {pretty_pkg_name}.")
 
 
 def get_preferred_mirrors():

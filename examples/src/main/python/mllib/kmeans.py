@@ -40,6 +40,6 @@ if __name__ == "__main__":
     data = lines.map(parseVector)
     k = int(sys.argv[2])
     model = KMeans.train(data, k)
-    print("Final centers: " + str(model.clusterCenters))
-    print("Total Cost: " + str(model.computeCost(data)))
+    print(f"Final centers: {str(model.clusterCenters)}")
+    print(f"Total Cost: {str(model.computeCost(data))}")
     sc.stop()

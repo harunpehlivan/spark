@@ -124,7 +124,8 @@ def _lock_and_wait(lock_success_callback, resource, timeout_secs, controlling_pi
     """
     lock_filename = os.path.join(_LOCK_DIR, resource)
     lock_message = (
-        "Session lock on " + resource + ", controlling pid " + str(controlling_pid) + "\n"
+        f"Session lock on {resource}, controlling pid {str(controlling_pid)}"
+        + "\n"
     )
     try:
         f = _acquire_lock(lock_filename, timeout_secs, lock_message)
@@ -146,9 +147,8 @@ def main():
     )
     if _daemonize(child_body_func):
         return 0
-    else:
-        print("Could not acquire lock")
-        return 1
+    print("Could not acquire lock")
+    return 1
 
 
 if __name__ == "__main__":

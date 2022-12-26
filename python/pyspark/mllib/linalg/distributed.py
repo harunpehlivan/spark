@@ -121,13 +121,13 @@ class RowMatrix(DistributedMatrix):
         """
         if isinstance(rows, RDD):
             rows = rows.map(_convert_to_vector)
-            java_matrix = callMLlibFunc("createRowMatrix", rows, int(numRows), int(numCols))
+            java_matrix = callMLlibFunc("createRowMatrix", rows, numRows, numCols)
         elif isinstance(rows, DataFrame):
-            java_matrix = callMLlibFunc("createRowMatrix", rows, int(numRows), int(numCols))
+            java_matrix = callMLlibFunc("createRowMatrix", rows, numRows, numCols)
         elif isinstance(rows, JavaObject) and rows.getClass().getSimpleName() == "RowMatrix":
             java_matrix = rows
         else:
-            raise TypeError("rows should be an RDD of vectors, got %s" % type(rows))
+            raise TypeError(f"rows should be an RDD of vectors, got {type(rows)}")
 
         self._java_matrix_wrapper = JavaModelWrapper(java_matrix)
 
@@ -318,7 +318,7 @@ class RowMatrix(DistributedMatrix):
         >>> sims.entries.first().value
         0.91914503...
         """
-        java_sims_mat = self._java_matrix_wrapper.call("columnSimilarities", float(threshold))
+        java_sims_mat = self._java_matrix_wrapper.call("columnSimilarities", threshold)
         return CoordinateMatrix(java_sims_mat)
 
     def tallSkinnyQR(
@@ -426,7 +426,7 @@ class RowMatrix(DistributedMatrix):
         >>> svd_model.V
         DenseMatrix(3, 2, [-0.4082, -0.8165, -0.4082, 0.8944, -0.4472, ...0.0], 0)
         """
-        j_model = self._java_matrix_wrapper.call("computeSVD", int(k), bool(computeU), float(rCond))
+        j_model = self._java_matrix_wrapper.call("computeSVD", k, computeU, rCond)
         return SingularValueDecomposition(j_model)
 
     def computePrincipalComponents(self, k: int) -> Matrix:
@@ -502,7 +502,7 @@ class SingularValueDecomposition(JavaModelWrapper, Generic[UT, VT]):
 
     @property  # type: ignore[misc]
     @since("2.2.0")
-    def U(self) -> Optional[UT]:  # type: ignore[return]
+    def U(self) -> Optional[UT]:    # type: ignore[return]
         """
         Returns a distributed matrix whose columns are the left
         singular vectors of the SingularValueDecomposition if computeU was set to be True.
@@ -515,7 +515,7 @@ class SingularValueDecomposition(JavaModelWrapper, Generic[UT, VT]):
             elif mat_name == "IndexedRowMatrix":
                 return IndexedRowMatrix(u)  # type: ignore[return-value]
             else:
-                raise TypeError("Expected RowMatrix/IndexedRowMatrix got %s" % mat_name)
+                raise TypeError(f"Expected RowMatrix/IndexedRowMatrix got {mat_name}")
 
     @property  # type: ignore[misc]
     @since("2.2.0")
@@ -550,11 +550,11 @@ class IndexedRow:
     """
 
     def __init__(self, index: int, vector: "VectorLike") -> None:
-        self.index = int(index)
+        self.index = index
         self.vector = _convert_to_vector(vector)
 
     def __repr__(self) -> str:
-        return "IndexedRow(%s, %s)" % (self.index, self.vector)
+        return f"IndexedRow({self.index}, {self.vector})"
 
 
 def _convert_to_indexed_row(row: Any) -> IndexedRow:
@@ -563,7 +563,7 @@ def _convert_to_indexed_row(row: Any) -> IndexedRow:
     elif isinstance(row, tuple) and len(row) == 2:
         return IndexedRow(*row)
     else:
-        raise TypeError("Cannot convert type %s into IndexedRow" % type(row))
+        raise TypeError(f"Cannot convert type {type(row)} into IndexedRow")
 
 
 class IndexedRowMatrix(DistributedMatrix):
@@ -628,10 +628,10 @@ class IndexedRowMatrix(DistributedMatrix):
             # both be easily serialized.  We will convert back to
             # IndexedRows on the Scala side.
             java_matrix = callMLlibFunc(
-                "createIndexedRowMatrix", rows.toDF(), int(numRows), int(numCols)
+                "createIndexedRowMatrix", rows.toDF(), numRows, numCols
             )
         elif isinstance(rows, DataFrame):
-            java_matrix = callMLlibFunc("createIndexedRowMatrix", rows, int(numRows), int(numCols))
+            java_matrix = callMLlibFunc("createIndexedRowMatrix", rows, numRows, numCols)
         elif isinstance(rows, JavaObject) and rows.getClass().getSimpleName() == "IndexedRowMatrix":
             java_matrix = rows
         else:
@@ -660,8 +660,7 @@ class IndexedRowMatrix(DistributedMatrix):
         # on the Scala/Java side. Then we map each Row in the
         # DataFrame back to an IndexedRow on this side.
         rows_df = callMLlibFunc("getIndexedRows", self._java_matrix_wrapper._java_model)
-        rows = rows_df.rdd.map(lambda row: IndexedRow(row[0], row[1]))
-        return rows
+        return rows_df.rdd.map(lambda row: IndexedRow(row[0], row[1]))
 
     def numRows(self) -> int:
         """
@@ -860,7 +859,7 @@ class IndexedRowMatrix(DistributedMatrix):
         >>> svd_model.V
         DenseMatrix(3, 2, [-0.4082, -0.8165, -0.4082, 0.8944, -0.4472, ...0.0], 0)
         """
-        j_model = self._java_matrix_wrapper.call("computeSVD", int(k), bool(computeU), float(rCond))
+        j_model = self._java_matrix_wrapper.call("computeSVD", k, computeU, rCond)
         return SingularValueDecomposition(j_model)
 
     def multiply(self, matrix: Matrix) -> "IndexedRowMatrix":
@@ -907,12 +906,12 @@ class MatrixEntry:
     """
 
     def __init__(self, i: int, j: int, value: float) -> None:
-        self.i = int(i)
-        self.j = int(j)
-        self.value = float(value)
+        self.i = i
+        self.j = j
+        self.value = value
 
     def __repr__(self) -> str:
-        return "MatrixEntry(%s, %s, %s)" % (self.i, self.j, self.value)
+        return f"MatrixEntry({self.i}, {self.j}, {self.value})"
 
 
 def _convert_to_matrix_entry(entry: Any) -> MatrixEntry:
@@ -921,7 +920,7 @@ def _convert_to_matrix_entry(entry: Any) -> MatrixEntry:
     elif isinstance(entry, tuple) and len(entry) == 3:
         return MatrixEntry(*entry)
     else:
-        raise TypeError("Cannot convert type %s into MatrixEntry" % type(entry))
+        raise TypeError(f"Cannot convert type {type(entry)} into MatrixEntry")
 
 
 class CoordinateMatrix(DistributedMatrix):
@@ -986,7 +985,7 @@ class CoordinateMatrix(DistributedMatrix):
             # each be easily serialized. We will convert back to
             # MatrixEntry inputs on the Scala side.
             java_matrix = callMLlibFunc(
-                "createCoordinateMatrix", entries.toDF(), int(numRows), int(numCols)
+                "createCoordinateMatrix", entries.toDF(), numRows, numCols
             )
         elif (
             isinstance(entries, JavaObject)
@@ -1020,8 +1019,7 @@ class CoordinateMatrix(DistributedMatrix):
         # DataFrame on the Scala/Java side. Then we map each Row in
         # the DataFrame back to a MatrixEntry on this side.
         entries_df = callMLlibFunc("getMatrixEntries", self._java_matrix_wrapper._java_model)
-        entries = entries_df.rdd.map(lambda row: MatrixEntry(row[0], row[1], row[2]))
-        return entries
+        return entries_df.rdd.map(lambda row: MatrixEntry(row[0], row[1], row[2]))
 
     def numRows(self) -> int:
         """
@@ -1178,18 +1176,17 @@ class CoordinateMatrix(DistributedMatrix):
 
 def _convert_to_matrix_block_tuple(block: Any) -> Tuple[Tuple[int, int], Matrix]:
     if (
-        isinstance(block, tuple)
-        and len(block) == 2
-        and isinstance(block[0], tuple)
-        and len(block[0]) == 2
-        and isinstance(block[1], Matrix)
+        not isinstance(block, tuple)
+        or len(block) != 2
+        or not isinstance(block[0], tuple)
+        or len(block[0]) != 2
+        or not isinstance(block[1], Matrix)
     ):
-        blockRowIndex = int(block[0][0])
-        blockColIndex = int(block[0][1])
-        subMatrix = block[1]
-        return ((blockRowIndex, blockColIndex), subMatrix)
-    else:
-        raise TypeError("Cannot convert type %s into a sub-matrix block tuple" % type(block))
+        raise TypeError(
+            f"Cannot convert type {type(block)} into a sub-matrix block tuple"
+        )
+    blockRowIndex = int(block[0][0])
+    return (blockRowIndex, int(block[0][1])), block[1]
 
 
 class BlockMatrix(DistributedMatrix):
@@ -1272,10 +1269,10 @@ class BlockMatrix(DistributedMatrix):
             java_matrix = callMLlibFunc(
                 "createBlockMatrix",
                 blocks.toDF(),
-                int(rowsPerBlock),
-                int(colsPerBlock),
-                int(numRows),
-                int(numCols),
+                rowsPerBlock,
+                colsPerBlock,
+                numRows,
+                numCols,
             )
         elif isinstance(blocks, JavaObject) and blocks.getClass().getSimpleName() == "BlockMatrix":
             java_matrix = blocks
@@ -1309,8 +1306,7 @@ class BlockMatrix(DistributedMatrix):
         # DataFrame on the Scala/Java side. Then we map each Row in
         # the DataFrame back to a sub-matrix block on this side.
         blocks_df = callMLlibFunc("getMatrixBlocks", self._java_matrix_wrapper._java_model)
-        blocks = blocks_df.rdd.map(lambda row: ((row[0][0], row[0][1]), row[1]))
-        return blocks
+        return blocks_df.rdd.map(lambda row: ((row[0][0], row[0][1]), row[1]))
 
     @property
     def rowsPerBlock(self) -> int:
@@ -1424,7 +1420,9 @@ class BlockMatrix(DistributedMatrix):
         Persists the underlying RDD with the specified storage level.
         """
         if not isinstance(storageLevel, StorageLevel):
-            raise TypeError("`storageLevel` should be a StorageLevel, got %s" % type(storageLevel))
+            raise TypeError(
+                f"`storageLevel` should be a StorageLevel, got {type(storageLevel)}"
+            )
         javaStorageLevel = self._java_matrix_wrapper._sc._getJavaStorageLevel(storageLevel)
         self._java_matrix_wrapper.call("persist", javaStorageLevel)
         return self
@@ -1466,7 +1464,7 @@ class BlockMatrix(DistributedMatrix):
         DenseMatrix(6, 2, [8.0, 2.0, 3.0, 14.0, 16.0, 18.0, 4.0, 16.0, 18.0, 20.0, 22.0, 24.0], 0)
         """
         if not isinstance(other, BlockMatrix):
-            raise TypeError("Other should be a BlockMatrix, got %s" % type(other))
+            raise TypeError(f"Other should be a BlockMatrix, got {type(other)}")
 
         other_java_block_matrix = other._java_matrix_wrapper._java_model
         java_block_matrix = self._java_matrix_wrapper.call("add", other_java_block_matrix)
@@ -1504,7 +1502,7 @@ class BlockMatrix(DistributedMatrix):
         DenseMatrix(6, 2, [6.0, 8.0, 9.0, -4.0, -7.0, -4.0, 10.0, 9.0, 9.0, -6.0, -5.0, -10.0], 0)
         """
         if not isinstance(other, BlockMatrix):
-            raise TypeError("Other should be a BlockMatrix, got %s" % type(other))
+            raise TypeError(f"Other should be a BlockMatrix, got {type(other)}")
 
         other_java_block_matrix = other._java_matrix_wrapper._java_model
         java_block_matrix = self._java_matrix_wrapper.call("subtract", other_java_block_matrix)
@@ -1541,7 +1539,7 @@ class BlockMatrix(DistributedMatrix):
         DenseMatrix(2, 2, [227.0, 258.0, 394.0, 450.0], 0)
         """
         if not isinstance(other, BlockMatrix):
-            raise TypeError("Other should be a BlockMatrix, got %s" % type(other))
+            raise TypeError(f"Other should be a BlockMatrix, got {type(other)}")
 
         other_java_block_matrix = other._java_matrix_wrapper._java_model
         java_block_matrix = self._java_matrix_wrapper.call("multiply", other_java_block_matrix)

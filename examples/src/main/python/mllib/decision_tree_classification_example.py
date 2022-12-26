@@ -18,6 +18,7 @@
 """
 Decision Tree Classification Example.
 """
+
 from pyspark import SparkContext
 # $example on$
 from pyspark.mllib.tree import DecisionTree, DecisionTreeModel
@@ -44,7 +45,7 @@ if __name__ == "__main__":
     labelsAndPredictions = testData.map(lambda lp: lp.label).zip(predictions)
     testErr = labelsAndPredictions.filter(
         lambda lp: lp[0] != lp[1]).count() / float(testData.count())
-    print('Test Error = ' + str(testErr))
+    print(f'Test Error = {str(testErr)}')
     print('Learned classification tree model:')
     print(model.toDebugString())
 
